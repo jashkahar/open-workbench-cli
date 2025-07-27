@@ -36,4 +36,4 @@ jobs:
           # The GitHub token to use to create the release.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # The secret token to push to your tap/bucket repos.
-          HOMEBREW_TAP_TOKEN: ${{ secrets.GORELEASER_PAT }}
+          GORELEASER_PAT: ${{ secrets.GORELEASER_PAT }}
