@@ -8,10 +8,14 @@ import (
 	"os"
 	"path/filepath"
 	"text/template"
+	"embed"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 )
+
+//go:embed templates
+var templatesFS embed.FS
 
 // TemplateData struct remains the same
 type TemplateData struct {
@@ -84,11 +88,11 @@ func runSimpleInteractiveScaffold() {
 
 // scaffoldAndApply contains the shared logic for scaffolding and templating
 func scaffoldAndApply(templateName string, data *TemplateData) {
-	sourceDir := filepath.Join("templates", templateName)
+	sourceDir := "templates/" + templateName
 	destDir := data.ProjectName
 
 	fmt.Printf("📂 Scaffolding project in './%s'...\n", destDir)
-	err := scaffoldProject(sourceDir, destDir)
+	err := scaffoldProject(templatesFS, sourceDir, destDir)
 	if err != nil {
 		log.Fatalf("❌ Failed to scaffold project: %v", err)
 	}
@@ -130,23 +134,23 @@ func promptForProjectDetails() (*TemplateData, error) {
 }
 
 // scaffoldProject copies the entire directory structure from a source to a destination.
-func scaffoldProject(sourceDir, destDir string) error {
+func scaffoldProject(sourceFS fs.FS, sourceDir, destDir string) error {
 	if _, err := os.Stat(destDir); !os.IsNotExist(err) {
 		return fmt.Errorf("directory '%s' already exists", destDir)
 	}
-	return filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
+	return fs.WalkDir(sourceFS, sourceDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		outPath := filepath.Join(destDir, path[len(sourceDir):])
-		if info.IsDir() {
-			return os.MkdirAll(outPath, info.Mode())
+		if d.IsDir() {
+			return os.MkdirAll(outPath, 0755)
 		}
-		fileBytes, err := os.ReadFile(path)
+		fileBytes, err := fs.ReadFile(sourceFS, path)
 		if err != nil {
 			return err
 		}
-		return os.WriteFile(outPath, fileBytes, info.Mode())
+		return os.WriteFile(outPath, fileBytes, 0644)
 	})
 }
 

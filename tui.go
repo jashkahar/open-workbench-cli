@@ -2,8 +2,7 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
+	"io/fs"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -36,17 +35,11 @@ type model struct {
 func newModel() (*model, error) {
 	var items []list.Item
 
-	// Get the directory where the executable is located
-	executable, err := os.Executable()
+	// Read directories directly from the embedded templatesFS variable
+	templateEntries, err := fs.ReadDir(templatesFS, "templates")
 	if err != nil {
-		return nil, fmt.Errorf("could not determine executable location: %w", err)
-	}
-	executableDir := filepath.Dir(executable)
-	templatesDir := filepath.Join(executableDir, "templates")
-
-	templateEntries, err := os.ReadDir(templatesDir)
-	if err != nil {
-		return nil, fmt.Errorf("could not read templates directory: %w", err)
+		// This error would mean the embedding failed during build, which is a critical issue.
+		return nil, fmt.Errorf("could not read embedded templates directory: %w", err)
 	}
 
 	for _, entry := range templateEntries {
