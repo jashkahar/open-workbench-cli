@@ -1,0 +1,117 @@
+# .goreleaser.yml
+# This is the configuration file for GoReleaser.
+# It defines how to build, package, and release your project.
+
+# The project name
+project_name: open-workbench-cli
+
+# This will be executed before the build
+before:
+  hooks:
+    - go mod tidy
+
+# Build configuration
+builds:
+  - # A list of builds. Each item is a build.
+    # The ID of the build. Used in the archives and other configurations.
+    id: open-workbench-cli
+    # The path to the main package.
+    main: .
+    # The go binary to use.
+    binary: open-workbench-cli
+    # GOOS and GOARCH to build for.
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    # Optional ldflags.
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+
+# Archive configuration
+archives:
+  - # ID of the archive.
+    id: open-workbench-cli
+    # The format of the archive.
+    format: tar.gz
+    # The name template of the archive.
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    # Files to include in the archive.
+    files:
+      - LICENSE
+      - README.md
+
+# Checksum configuration
+checksum:
+  name_template: 'checksums.txt'
+
+# Snapshot configuration
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+# Changelog configuration
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+# Homebrew tap configuration
+brews:
+  - # Name of the recipe
+    name: open-workbench-cli
+    # The GitHub repository to push the formula to
+    tap:
+      owner: jashkahar
+      name: homebrew-tap
+      # The token to use to push to the repository.
+      token: "{{ .Env.GORELEASER_PAT }}"
+    # The commit author
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    # The folder inside the repository to push the formula to.
+    folder: Formula
+    # The homepage of the project.
+    homepage: "https://github.com/jashkahar/open-workbench-cli"
+    # The description of the project.
+    description: "A powerful CLI for scaffolding modern web applications."
+    # The license of the project.
+    license: "MIT"
+    # A list of test commands to run.
+    test: |
+      system "#{bin}/open-workbench-cli --version"
+
+# Scoop bucket configuration
+scoops:
+  - # Name of the manifest
+    name: open-workbench-cli
+    # The GitHub repository to push the manifest to
+    bucket:
+      owner: jashkahar
+      name: scoop-bucket
+      # The token to use to push to the repository.
+      token: "{{ .Env.GORELEASER_PAT }}"
+    # The commit author
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    # The homepage of the project.
+    homepage: "https://github.com/jashkahar/open-workbench-cli"
+    # The description of the project.
+    description: "A powerful CLI for scaffolding modern web applications."
+    # The license of the project.
+    license: "MIT"
+
+# Release configuration
+release:
+  # The name of the release.
+  name_template: "{{.ProjectName}} v{{.Version}}"
+  # If set to true, will not auto-publish the release.
+  draft: false
+  # If set to true, will mark the release as a pre-release.
+  prerelease: auto

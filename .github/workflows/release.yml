@@ -1,0 +1,36 @@
+# .github/workflows/release.yml
+# This workflow will run GoReleaser when a new tag is pushed.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # This will trigger the workflow on version tags like v0.2.2, v1.0.0
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # This is important to get all the git history for the changelog
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21' # Or your project's Go version
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          # The version of GoReleaser to use.
+          version: latest
+          # The arguments to pass to GoReleaser.
+          args: release --clean
+        env:
+          # The GitHub token to use to create the release.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The secret token to push to your tap/bucket repos.
+          HOMEBREW_TAP_TOKEN: ${{ secrets.GORELEASER_PAT }}
