@@ -65,7 +65,7 @@ brews:
   - # Name of the recipe
     name: open-workbench-cli
     # The GitHub repository to push the formula to
-    tap:
+    repository:
       owner: jashkahar
       name: homebrew-tap
       # The token to use to push to the repository.
@@ -91,7 +91,7 @@ scoops:
   - # Name of the manifest
     name: open-workbench-cli
     # The GitHub repository to push the manifest to
-    bucket:
+    repository:
       owner: jashkahar
       name: scoop-bucket
       # The token to use to push to the repository.
