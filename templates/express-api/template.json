@@ -1,0 +1,100 @@
+{
+  "name": "Express.js API",
+  "description": "A modern Express.js API with TypeScript, testing, and best practices.",
+  "parameters": [
+    {
+      "name": "ProjectName",
+      "prompt": "Project Name:",
+      "group": "Project Details",
+      "type": "string",
+      "required": true,
+      "validation": {
+        "regex": "^[a-z0-9-]+$",
+        "errorMessage": "Project name can only contain lowercase letters, numbers, and hyphens."
+      }
+    },
+    {
+      "name": "Owner",
+      "prompt": "Project Owner:",
+      "group": "Project Details",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "DatabaseType",
+      "prompt": "Which database would you like to use?",
+      "group": "Database",
+      "type": "select",
+      "default": "None",
+      "options": ["None", "PostgreSQL", "MongoDB", "SQLite"]
+    },
+    {
+      "name": "IncludeTesting",
+      "prompt": "Include testing setup?",
+      "group": "Testing & Quality",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "name": "IncludeDocker",
+      "prompt": "Include Docker configuration?",
+      "group": "Deployment",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "name": "IncludeAuth",
+      "prompt": "Include authentication setup?",
+      "group": "Security",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "name": "InstallDeps",
+      "prompt": "Install dependencies after setup?",
+      "group": "Final Steps",
+      "type": "boolean",
+      "default": true,
+      "helpText": "This will run 'npm install' automatically for you."
+    }
+  ],
+  "postScaffold": {
+    "filesToDelete": [
+      {
+        "path": "src/database/postgres/",
+        "condition": "DatabaseType != 'PostgreSQL'"
+      },
+      {
+        "path": "src/database/mongo/",
+        "condition": "DatabaseType != 'MongoDB'"
+      },
+      {
+        "path": "src/database/sqlite/",
+        "condition": "DatabaseType != 'SQLite'"
+      },
+      {
+        "path": "src/auth/",
+        "condition": "IncludeAuth == false"
+      },
+      {
+        "path": "tests/",
+        "condition": "IncludeTesting == false"
+      },
+      {
+        "path": "Dockerfile",
+        "condition": "IncludeDocker == false"
+      }
+    ],
+    "commands": [
+      {
+        "command": "git init",
+        "description": "Initializing Git repository..."
+      },
+      {
+        "command": "npm install",
+        "description": "Installing project dependencies...",
+        "condition": "InstallDeps == true"
+      }
+    ]
+  }
+} 
