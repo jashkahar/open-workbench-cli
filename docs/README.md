@@ -133,6 +133,6 @@ This documentation is licensed under the same MIT License as the project. See th
 
 ---
 
-**Last Updated**: [Current Date]  
-**Version**: [Current Version]  
-**Maintainers**: [Project Maintainers]
+**Last Updated**: 07/27/2025  
+**Version**: v0.4.0  
+**Maintainers**: [Jash Kahar](@jashkahar)
