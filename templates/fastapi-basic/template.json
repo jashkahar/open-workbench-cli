@@ -1,0 +1,85 @@
+{
+  "name": "FastAPI Basic",
+  "description": "A simple FastAPI backend with modern Python practices.",
+  "parameters": [
+    {
+      "name": "ProjectName",
+      "prompt": "Project Name:",
+      "group": "Project Details",
+      "type": "string",
+      "required": true,
+      "validation": {
+        "regex": "^[a-z0-9-]+$",
+        "errorMessage": "Project name can only contain lowercase letters, numbers, and hyphens."
+      }
+    },
+    {
+      "name": "Owner",
+      "prompt": "Project Owner:",
+      "group": "Project Details",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "IncludeVirtualEnv",
+      "prompt": "Create virtual environment setup?",
+      "group": "Python Setup",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "name": "IncludeDocker",
+      "prompt": "Include Docker configuration?",
+      "group": "Deployment",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "name": "IncludeTesting",
+      "prompt": "Include testing setup?",
+      "group": "Testing & Quality",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "name": "InstallDeps",
+      "prompt": "Install dependencies after setup?",
+      "group": "Final Steps",
+      "type": "boolean",
+      "default": true,
+      "helpText": "This will run 'pip install -r requirements.txt' automatically for you."
+    }
+  ],
+  "postScaffold": {
+    "filesToDelete": [
+      {
+        "path": "Dockerfile",
+        "condition": "IncludeDocker == false"
+      },
+      {
+        "path": "venv-setup.sh",
+        "condition": "IncludeVirtualEnv == false"
+      },
+      {
+        "path": "tests/",
+        "condition": "IncludeTesting == false"
+      }
+    ],
+    "commands": [
+      {
+        "command": "git init",
+        "description": "Initializing Git repository..."
+      },
+      {
+        "command": "python -m venv venv",
+        "description": "Creating virtual environment...",
+        "condition": "IncludeVirtualEnv == true"
+      },
+      {
+        "command": "pip install -r requirements.txt",
+        "description": "Installing Python dependencies...",
+        "condition": "InstallDeps == true"
+      }
+    ]
+  }
+} 

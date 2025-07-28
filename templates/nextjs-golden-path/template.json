@@ -1,0 +1,101 @@
+{
+  "name": "Next.js Production-Grade",
+  "description": "A fully-featured Next.js application with testing, linting, and optional CI/CD.",
+  "parameters": [
+    {
+      "name": "ProjectName",
+      "prompt": "Project Name:",
+      "group": "Project Details",
+      "type": "string",
+      "required": true,
+      "validation": {
+        "regex": "^[a-z0-9-]+$",
+        "errorMessage": "Project name can only contain lowercase letters, numbers, and hyphens."
+      }
+    },
+    {
+      "name": "Owner",
+      "prompt": "Project Owner:",
+      "group": "Project Details",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "IncludeTesting",
+      "prompt": "Include a testing framework?",
+      "group": "Testing & Quality",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "name": "TestingFramework",
+      "prompt": "Which testing framework?",
+      "group": "Testing & Quality",
+      "type": "select",
+      "default": "Jest",
+      "options": ["Jest", "Vitest"],
+      "condition": "IncludeTesting == true"
+    },
+    {
+      "name": "IncludeDocker",
+      "prompt": "Include Docker configuration?",
+      "group": "Deployment",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "name": "IncludeTailwind",
+      "prompt": "Include Tailwind CSS?",
+      "group": "Styling",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "name": "InstallDeps",
+      "prompt": "Install dependencies after setup?",
+      "group": "Final Steps",
+      "type": "boolean",
+      "default": true,
+      "helpText": "This will run 'npm install' automatically for you."
+    }
+  ],
+  "postScaffold": {
+    "filesToDelete": [
+      {
+        "path": "jest.config.js",
+        "condition": "TestingFramework != 'Jest'"
+      },
+      {
+        "path": "vitest.config.js",
+        "condition": "TestingFramework != 'Vitest'"
+      },
+      {
+        "path": "tests/",
+        "condition": "IncludeTesting == false"
+      },
+      {
+        "path": "Dockerfile",
+        "condition": "IncludeDocker == false"
+      },
+      {
+        "path": "tailwind.config.js",
+        "condition": "IncludeTailwind == false"
+      },
+      {
+        "path": "postcss.config.js",
+        "condition": "IncludeTailwind == false"
+      }
+    ],
+    "commands": [
+      {
+        "command": "git init",
+        "description": "Initializing Git repository..."
+      },
+      {
+        "command": "npm install",
+        "description": "Installing project dependencies...",
+        "condition": "InstallDeps == true"
+      }
+    ]
+  }
+} 
