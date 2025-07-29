@@ -29,8 +29,9 @@ This document provides a comprehensive overview of the Open Workbench CLI archit
 
 **Key Functions**:
 - `main()`: Application entry point
-- `runUIAndScaffold()`: TUI mode execution
-- `runSimpleInteractiveScaffold()`: Interactive mode execution
+
+- `runInteractiveScaffold()`: Interactive mode execution
+- `runCLICreate()`: CLI mode execution
 - `scaffoldAndApplyDynamic()`: Core scaffolding logic
 
 #### 2. Terminal User Interface (`tui.go`)
@@ -48,9 +49,29 @@ This document provides a comprehensive overview of the Open Workbench CLI archit
 - `runTUI()`: Main TUI execution function
 
 **Dependencies**:
-- `github.com/charmbracelet/bubbles/list`: List component
-- `github.com/charmbracelet/bubbles/spinner`: Loading indicators
-- `github.com/charmbracelet/lipgloss`: Styling
+
+
+#### 3. CLI Mode (`main.go`)
+**Purpose**: Non-interactive command-line interface
+
+**Responsibilities**:
+- Parse command-line arguments and flags
+- Validate required parameters
+- Execute scaffolding without user interaction
+- Provide comprehensive help and error messages
+
+**Key Functions**:
+- `runCLICreate()`: Main CLI mode execution
+- Flag parsing and validation
+- Parameter value mapping from flags
+- Error handling with help guidance
+
+**Features**:
+- Support for all template options via flags
+- Optional git initialization (`--no-git`)
+- Optional dependency installation (`--no-install-deps`)
+- Conditional feature flags (`--no-testing`, `--no-tailwind`, etc.)
+- Comprehensive help system with examples
 
 #### 3. Dynamic Templating System (`internal/templating/`)
 
@@ -420,6 +441,6 @@ var templatesFS embed.FS
 
 ---
 
-**Last Updated**: [Current Date]  
-**Version**: [Current Version]  
+**Last Updated**: 07/29/2025  
+**Version**: v0.5.0  
 **Maintainers**: [Project Maintainers] 

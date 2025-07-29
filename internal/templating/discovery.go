@@ -98,35 +98,27 @@ func LoadTemplateManifest(templateFS fs.FS, templateName string) (*TemplateManif
 	// Use forward slashes for embedded filesystem paths
 	manifestPath := fmt.Sprintf("templates/%s/template.json", templateName)
 
-	fmt.Printf("DEBUG: Trying to load manifest from: %s\n", manifestPath)
-
 	// Read the manifest file from the embedded filesystem
 	manifestBytes, err := fs.ReadFile(templateFS, manifestPath)
 	if err != nil {
-		fmt.Printf("DEBUG: Failed to read manifest: %v\n", err)
-		return nil, fmt.Errorf("failed to read template manifest: %w", err)
+		return nil, NewTemplateNotFoundError(templateName, err)
 	}
-
-	fmt.Printf("DEBUG: Successfully read manifest bytes: %d bytes\n", len(manifestBytes))
 
 	// Parse the JSON manifest into the TemplateManifest struct
 	var manifest TemplateManifest
 	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
-		fmt.Printf("DEBUG: Failed to parse manifest JSON: %v\n", err)
-		return nil, fmt.Errorf("failed to parse template manifest: %w", err)
+		return nil, NewInvalidManifestError(templateName, "JSON parsing failed", err)
 	}
-
-	fmt.Printf("DEBUG: Successfully parsed manifest: %s - %s\n", manifest.Name, manifest.Description)
 
 	// Validate that all required fields are present
 	if manifest.Name == "" {
-		return nil, fmt.Errorf("template manifest missing required field: name")
+		return nil, NewInvalidManifestError(templateName, "Missing required field: name", nil)
 	}
 	if manifest.Description == "" {
-		return nil, fmt.Errorf("template manifest missing required field: description")
+		return nil, NewInvalidManifestError(templateName, "Missing required field: description", nil)
 	}
 	if len(manifest.Parameters) == 0 {
-		return nil, fmt.Errorf("template manifest missing required field: parameters")
+		return nil, NewInvalidManifestError(templateName, "Missing required field: parameters", nil)
 	}
 
 	return &manifest, nil
@@ -235,13 +227,13 @@ func ValidateTemplate(templateFS fs.FS, templateName string) error {
 	for i, param := range manifest.Parameters {
 		// Check for required parameter fields
 		if param.Name == "" {
-			return fmt.Errorf("parameter %d missing required field: name", i)
+			return NewInvalidManifestError(templateName, fmt.Sprintf("Parameter %d missing required field: name", i), nil)
 		}
 		if param.Prompt == "" {
-			return fmt.Errorf("parameter %d missing required field: prompt", i)
+			return NewInvalidManifestError(templateName, fmt.Sprintf("Parameter %d missing required field: prompt", i), nil)
 		}
 		if param.Type == "" {
-			return fmt.Errorf("parameter %d missing required field: type", i)
+			return NewInvalidManifestError(templateName, fmt.Sprintf("Parameter %d missing required field: type", i), nil)
 		}
 
 		// Validate parameter type against supported types
@@ -249,12 +241,12 @@ func ValidateTemplate(templateFS fs.FS, templateName string) error {
 		case "string", "boolean", "select", "multiselect":
 			// Valid types - no action needed
 		default:
-			return fmt.Errorf("parameter %s has invalid type: %s", param.Name, param.Type)
+			return NewInvalidManifestError(templateName, fmt.Sprintf("Parameter '%s' has invalid type: %s", param.Name, param.Type), nil)
 		}
 
 		// Validate that select/multiselect parameters have options defined
 		if (param.Type == "select" || param.Type == "multiselect") && len(param.Options) == 0 {
-			return fmt.Errorf("parameter %s of type %s must have options", param.Name, param.Type)
+			return NewInvalidManifestError(templateName, fmt.Sprintf("Parameter '%s' of type %s must have options", param.Name, param.Type), nil)
 		}
 	}
 

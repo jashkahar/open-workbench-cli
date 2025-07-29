@@ -47,11 +47,10 @@ open-workbench-cli
 
 ### Available Commands
 
-| Command                     | Description                        |
-| --------------------------- | ---------------------------------- |
-| `open-workbench-cli`        | Simple interactive mode            |
-| `open-workbench-cli ui`     | Enhanced Terminal User Interface   |
-| `open-workbench-cli create` | Non-interactive mode (coming soon) |
+| Command                     | Description                    |
+| --------------------------- | ------------------------------ |
+| `open-workbench-cli`        | Interactive mode (recommended) |
+| `open-workbench-cli create` | CLI mode with flags            |
 
 ### Interactive Modes
 
@@ -77,9 +76,9 @@ open-workbench-cli ui
 - `q` - Quit without selection
 - `Ctrl+C` - Exit immediately
 
-#### 2. Simple Interactive Mode
+#### 2. Interactive Mode (Recommended)
 
-For quick projects with default settings:
+For guided project creation with template selection:
 
 ```bash
 open-workbench-cli
@@ -87,9 +86,54 @@ open-workbench-cli
 
 **Features:**
 
-- Uses default template (nextjs-golden-path)
-- Simple parameter collection
-- Quick project setup
+- Template selection from all available templates
+- Organized parameter collection with grouping
+- Comprehensive validation and error handling
+- Optional git initialization and dependency installation
+
+#### 3. CLI Mode (Non-Interactive)
+
+For automation and scripting:
+
+```bash
+open-workbench-cli create <template> <project-name> --owner="Your Name" [flags]
+```
+
+**Features:**
+
+- Non-interactive project creation
+- Command-line flags for all options
+- Suitable for CI/CD and automation
+- Comprehensive help system
+
+**Available Flags:**
+
+| Flag                  | Description                        |
+| --------------------- | ---------------------------------- |
+| `--owner`             | Project owner (required)           |
+| `--no-testing`        | Disable testing framework          |
+| `--no-tailwind`       | Disable Tailwind CSS               |
+| `--no-docker`         | Disable Docker configuration       |
+| `--no-install-deps`   | Skip dependency installation       |
+| `--no-git`            | Skip Git repository initialization |
+| `--testing-framework` | Testing framework (Jest/Vitest)    |
+| `--help`              | Show help message                  |
+
+**Examples:**
+
+```bash
+# Create a Next.js project with all features
+open-workbench-cli create nextjs-golden-path my-app --owner="John Doe"
+
+# Create a React project without testing
+open-workbench-cli create react-typescript my-react-app --owner="Dev Team" --no-testing
+
+# Create a FastAPI project without git initialization
+open-workbench-cli create fastapi-basic my-api --owner="Backend Team" --no-git
+
+# Get help for CLI mode
+open-workbench-cli create --help
+```
 
 ### Parameter Collection
 
@@ -571,6 +615,6 @@ We value your feedback:
 
 ---
 
-**Last Updated**: [Current Date]  
-**Version**: [Current Version]  
+**Last Updated**: 07/29/2025  
+**Version**: v0.5.0  
 **Maintainers**: [Project Maintainers]

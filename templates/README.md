@@ -492,6 +492,6 @@ go test -run TestTemplateProcessing
 
 ---
 
-**Last Updated**: [Current Date]  
-**Version**: [Current Version]  
+**Last Updated**: 07/29/2025  
+**Version**: v0.5.0  
 **Maintainers**: [Project Maintainers]

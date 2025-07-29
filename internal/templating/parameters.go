@@ -185,22 +185,22 @@ func (pp *ParameterProcessor) ValidateParameter(param Parameter, value interface
 	switch param.Type {
 	case "string":
 		if _, ok := value.(string); !ok {
-			return fmt.Errorf("parameter %s expects string value", param.Name)
+			return NewParameterValidationError(param.Name, fmt.Sprintf("%v", value), "Expected string value", nil)
 		}
 	case "boolean":
 		if _, ok := value.(bool); !ok {
-			return fmt.Errorf("parameter %s expects boolean value", param.Name)
+			return NewParameterValidationError(param.Name, fmt.Sprintf("%v", value), "Expected boolean value", nil)
 		}
 	case "select":
 		if strValue, ok := value.(string); ok {
 			return pp.validateSelectValue(param, strValue)
 		}
-		return fmt.Errorf("parameter %s expects string value", param.Name)
+		return NewParameterValidationError(param.Name, fmt.Sprintf("%v", value), "Expected string value", nil)
 	case "multiselect":
 		if strValues, ok := value.([]string); ok {
 			return pp.validateMultiSelectValue(param, strValues)
 		}
-		return fmt.Errorf("parameter %s expects array of strings", param.Name)
+		return NewParameterValidationError(param.Name, fmt.Sprintf("%v", value), "Expected array of strings", nil)
 	}
 
 	// Apply custom validation for string parameters
@@ -229,7 +229,7 @@ func (pp *ParameterProcessor) validateSelectValue(param Parameter, value string)
 			return nil
 		}
 	}
-	return fmt.Errorf("parameter %s: value '%s' is not a valid option", param.Name, value)
+	return NewParameterValidationError(param.Name, value, fmt.Sprintf("Value is not a valid option. Valid options are: %s", strings.Join(param.Options, ", ")), nil)
 }
 
 // validateMultiSelectValue validates a multiselect parameter value.
@@ -253,7 +253,7 @@ func (pp *ParameterProcessor) validateMultiSelectValue(param Parameter, values [
 			}
 		}
 		if !found {
-			return fmt.Errorf("parameter %s: value '%s' is not a valid option", param.Name, value)
+			return NewParameterValidationError(param.Name, value, fmt.Sprintf("Value is not a valid option. Valid options are: %s", strings.Join(param.Options, ", ")), nil)
 		}
 	}
 	return nil
@@ -278,15 +278,16 @@ func (pp *ParameterProcessor) validateStringValue(param Parameter, value string)
 	// Compile and apply the regex pattern
 	matched, err := regexp.MatchString(param.Validation.Regex, value)
 	if err != nil {
-		return fmt.Errorf("invalid regex pattern in parameter %s: %w", param.Name, err)
+		return NewParameterValidationError(param.Name, value, "Invalid validation pattern", err)
 	}
 
 	// Return appropriate error message if validation fails
 	if !matched {
+		errorMessage := "Value does not match required pattern"
 		if param.Validation.ErrorMessage != "" {
-			return fmt.Errorf("parameter %s: %s", param.Name, param.Validation.ErrorMessage)
+			errorMessage = param.Validation.ErrorMessage
 		}
-		return fmt.Errorf("parameter %s: value does not match required pattern", param.Name)
+		return NewParameterValidationError(param.Name, value, errorMessage, nil)
 	}
 
 	return nil

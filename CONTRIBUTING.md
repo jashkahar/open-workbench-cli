@@ -254,13 +254,11 @@ Examples:
    # Follow prompts and verify the generated project
    ```
 
-3. **Test TUI mode**:
-
    ```bash
-   ./open-workbench-cli ui
+
    ```
 
-4. **Test generated projects**:
+3. **Test generated projects**:
    - Install dependencies
    - Run development server
    - Verify functionality
@@ -320,8 +318,8 @@ Brief description of the changes
 1. **Create a new release**:
 
    ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
+   git tag v0.5.0
+   git push origin v0.5.0
    ```
 
 2. **GitHub Actions** will automatically:

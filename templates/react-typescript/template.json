@@ -48,6 +48,14 @@
       "type": "boolean",
       "default": true,
       "helpText": "This will run 'npm install' automatically for you."
+    },
+    {
+      "name": "InitGit",
+      "prompt": "Initialize Git repository?",
+      "group": "Final Steps",
+      "type": "boolean",
+      "default": true,
+      "helpText": "This will run 'git init' to initialize a new Git repository."
     }
   ],
   "postScaffold": {
@@ -72,7 +80,8 @@
     "commands": [
       {
         "command": "git init",
-        "description": "Initializing Git repository..."
+        "description": "Initializing Git repository...",
+        "condition": "InitGit == true"
       },
       {
         "command": "npm install",

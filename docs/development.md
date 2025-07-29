@@ -127,21 +127,18 @@ GOOS=linux GOARCH=amd64 go build -o open-workbench-cli-linux main.go
 #### Manual Testing
 
 ```bash
-# Test TUI mode
-go run main.go ui
-
 # Test interactive mode
 go run main.go
 
-# Test with specific template
-go run main.go ui  # Then select a template
+# Test CLI mode
+go run main.go create --help
 ```
 
 #### Template Testing
 
 ```bash
 # Create a test project
-go run main.go ui
+go run main.go
 # Select a template and complete the process
 
 # Verify the generated project
@@ -360,14 +357,17 @@ func TestFullScaffoldingWorkflow(t *testing.T) {
 
 ### Manual Testing Checklist
 
-- [ ] TUI mode works correctly
-- [ ] Interactive mode works correctly
+- [ ] Interactive mode works correctly (template selection, parameter collection)
+- [ ] CLI mode works correctly (all flags, error handling, help)
+
 - [ ] Template discovery finds all templates
 - [ ] Parameter collection works for all types
 - [ ] Template processing substitutes variables correctly
 - [ ] Post-scaffolding actions execute properly
+- [ ] Optional git initialization works (`--no-git` flag)
 - [ ] Error handling works for invalid inputs
 - [ ] Help text and validation messages are clear
+- [ ] All conditional logic works (testing, tailwind, docker options)
 
 ## 🔍 Code Quality
 
@@ -422,8 +422,8 @@ go vet ./...
 2. **Create Release Tag**
 
    ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
+   git tag v0.5.0
+   git push origin v0.5.0
    ```
 
 3. **Monitor Release**
@@ -542,6 +542,6 @@ go tool pprof mem.prof
 
 ---
 
-**Last Updated**: [Current Date]  
-**Version**: [Current Version]  
+**Last Updated**: 07/29/2025  
+**Version**: v0.5.0  
 **Maintainers**: [Project Maintainers]

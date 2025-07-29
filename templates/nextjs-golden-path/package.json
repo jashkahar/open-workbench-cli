@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint"{{if .IncludeTesting}},
+    "test": "{{if eq .TestingFramework "Jest"}}jest{{else}}vitest{{end}}",
+    "test:watch": "{{if eq .TestingFramework "Jest"}}jest --watch{{else}}vitest --watch{{end}}"{{end}}
   },
   "dependencies": {
     "react": "^18",
@@ -21,6 +23,12 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "eslint": "^8",
-    "eslint-config-next": "14.2.3"
+    "eslint-config-next": "14.2.3"{{if .IncludeTesting}},
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/jest-dom": "^6.0.0"{{if eq .TestingFramework "Jest"}},
+    "jest": "^29.0.0",
+    "jest-environment-jsdom": "^29.0.0"{{else}},
+    "vitest": "^1.0.0",
+    "@vitejs/plugin-react": "^4.0.0"{{end}}{{end}}
   }
 } 

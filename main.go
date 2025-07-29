@@ -2,9 +2,8 @@
 // modern web applications with pre-configured templates and best practices.
 //
 // The CLI supports multiple execution modes:
-//   - Interactive TUI mode for template selection
-//   - Simple interactive mode with default template
-//   - Non-interactive mode (planned)
+//   - Interactive mode for guided project creation
+//   - Non-interactive CLI mode with command-line flags
 //
 // Features:
 //   - Dynamic template system with conditional logic
@@ -14,9 +13,8 @@
 //
 // Usage:
 //
-//	open-workbench-cli        # Simple interactive mode
-//	open-workbench-cli ui     # Enhanced TUI mode
-//	open-workbench-cli create # Non-interactive mode (coming soon)
+//	open-workbench-cli        # Interactive mode
+//	open-workbench-cli create # CLI mode with flags
 package main
 
 import (
@@ -49,103 +47,232 @@ var templatesFS embed.FS
 // execution mode based on the provided arguments.
 //
 // Supported commands:
-//   - No arguments: Simple interactive mode with default template
-//   - "ui": Enhanced Terminal User Interface mode
-//   - "create": Non-interactive mode (planned)
+//   - No arguments: Interactive mode with template selection
+//   - "create": CLI mode with command-line flags
 func main() {
+	// Check for command-line arguments
 	if len(os.Args) > 1 {
-		// Handle subcommands without requiring a complex flag parsing library
+		// Handle subcommands
 		switch os.Args[1] {
-		case "ui":
-			runUIAndScaffold()
 		case "create":
-			// TODO: Implement non-interactive mode with flag parsing
-			// This would allow usage like: open-workbench-cli create --name my-project --template nextjs
-			fmt.Println("Non-interactive 'create' command not yet fully implemented.")
-			fmt.Println("For now, use the 'ui' command or run without arguments.")
+			runCLICreate()
 		default:
 			fmt.Printf("Unknown command: %s\n", os.Args[1])
-			fmt.Println("Available commands: 'ui'")
+			fmt.Println("Available commands:")
+			fmt.Println("  open-workbench-cli          # Interactive mode")
+			fmt.Println("  open-workbench-cli create   # CLI mode with flags")
+			fmt.Println()
+			fmt.Println("Run 'open-workbench-cli create --help' for detailed CLI usage")
+			fmt.Println("Run 'open-workbench-cli' for interactive mode")
+			os.Exit(1)
 		}
 		return
 	}
 
-	// Default behavior: run simple interactive mode with default template
-	runSimpleInteractiveScaffold()
+	// Default behavior: run interactive mode
+	runInteractiveScaffold()
 }
 
-// runUIAndScaffold orchestrates the complete TUI-based scaffolding workflow.
-// This function handles the enhanced Terminal User Interface flow, including:
-//   - Template selection via TUI
-//   - Parameter collection with validation
-//   - Project scaffolding with dynamic template processing
-//   - Post-scaffolding actions execution
+// runInteractiveScaffold handles the interactive survey flow.
+// This function provides a user-friendly way to create projects by allowing
+// template selection and collecting parameters through the survey library.
 //
-// The function provides detailed debug output during development and
-// graceful error handling with user-friendly messages.
-func runUIAndScaffold() {
-	fmt.Println("🚀 Starting Open Workbench UI...")
-
-	// Launch the Terminal User Interface for template selection
-	selectedTemplate, err := runTUI()
+// This mode is useful for guided project creation with template selection.
+func runInteractiveScaffold() {
+	// Discover available templates
+	templates, err := templating.DiscoverTemplates(templatesFS)
 	if err != nil {
-		log.Fatalf("❌ Could not start TUI: %v", err)
+		fmt.Printf("❌ Could not discover templates: %v\n", err)
+		os.Exit(1)
 	}
 
-	fmt.Printf("DEBUG: Selected template: '%s'\n", selectedTemplate)
-
-	// Handle case where user quits the TUI without selecting a template
-	if selectedTemplate == "" {
-		fmt.Println("No template selected, exiting...")
-		return
+	if len(templates) == 0 {
+		fmt.Println("❌ No templates found")
+		os.Exit(1)
 	}
 
-	// Load and validate the selected template's manifest
-	fmt.Println("DEBUG: Loading template manifest...")
+	// Create template options for selection
+	var templateOptions []string
+	templateMap := make(map[string]string)
+	for _, template := range templates {
+		templateOptions = append(templateOptions, fmt.Sprintf("%s - %s", template.Name, template.Description))
+		templateMap[fmt.Sprintf("%s - %s", template.Name, template.Description)] = template.Name
+	}
+
+	// Prompt user to select a template
+	var selectedTemplateOption string
+	templateQuestion := &survey.Select{
+		Message: "Choose a template:",
+		Options: templateOptions,
+	}
+	err = survey.AskOne(templateQuestion, &selectedTemplateOption)
+	if err != nil {
+		if errors.Is(err, terminal.InterruptErr) {
+			fmt.Println("\nOperation cancelled.")
+			os.Exit(0)
+		}
+		fmt.Printf("❌ Could not select template: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Get the actual template name
+	selectedTemplate := templateMap[selectedTemplateOption]
+	fmt.Printf("🚀 Selected template: %s\n", selectedTemplate)
+
+	// Load the selected template's manifest
 	templateInfo, err := templating.GetTemplateInfo(templatesFS, selectedTemplate)
 	if err != nil {
-		log.Fatalf("❌ Could not load template manifest: %v", err)
-	}
-	fmt.Printf("DEBUG: Template manifest loaded: %s - %s\n", templateInfo.Name, templateInfo.Description)
-
-	// Collect user parameters using the dynamic parameter system
-	fmt.Println("DEBUG: Collecting template parameters...")
-	parameterValues, err := promptForTemplateParameters(templateInfo.Manifest)
-	if err != nil {
-		log.Fatalf("❌ Could not collect template parameters: %v", err)
-	}
-	fmt.Printf("DEBUG: Collected parameters: %+v\n", parameterValues)
-
-	// Execute the scaffolding process with collected parameters
-	scaffoldAndApplyDynamic(selectedTemplate, parameterValues)
-}
-
-// runSimpleInteractiveScaffold handles the legacy interactive survey flow.
-// This function provides a simpler alternative to the TUI mode by using
-// a hardcoded default template (nextjs-golden-path) and collecting
-// parameters through the survey library.
-//
-// This mode is useful for quick project creation without template selection.
-func runSimpleInteractiveScaffold() {
-	// Use a hardcoded default template for simplicity
-	// TODO: In the future, this could present a simple template selection
-	const defaultTemplate = "nextjs-golden-path"
-	fmt.Printf("🚀 Welcome! Using default template: %s\n", defaultTemplate)
-
-	// Load the default template's manifest
-	templateInfo, err := templating.GetTemplateInfo(templatesFS, defaultTemplate)
-	if err != nil {
-		log.Fatalf("❌ Could not load template manifest: %v", err)
+		fmt.Printf("❌ %s\n", templating.FormatErrorForUser(err))
+		os.Exit(1)
 	}
 
 	// Collect parameters using the dynamic system
 	parameterValues, err := promptForTemplateParameters(templateInfo.Manifest)
 	if err != nil {
-		log.Fatalf("❌ Could not collect template parameters: %v", err)
+		fmt.Printf("❌ Could not collect template parameters: %v\n", err)
+		fmt.Println("\nPossible solutions:")
+		fmt.Println("• Check that all required parameters are provided")
+		fmt.Println("• Ensure parameter values are valid")
+		os.Exit(1)
 	}
 
 	// Execute scaffolding with the collected parameters
-	scaffoldAndApplyDynamic(defaultTemplate, parameterValues)
+	scaffoldAndApplyDynamic(selectedTemplate, parameterValues)
+}
+
+// runCLICreate handles non-interactive project creation using command-line flags.
+// This function parses command-line arguments and creates projects without
+// any interactive prompts, making it suitable for automation and scripting.
+//
+// Usage: open-workbench-cli create <template> <project-name> [flags]
+func runCLICreate() {
+	// Check for help flag first
+	for i := 2; i < len(os.Args); i++ {
+		if os.Args[i] == "--help" || os.Args[i] == "-h" {
+			fmt.Println("Usage: open-workbench-cli create <template> <project-name> [flags]")
+			fmt.Println()
+			fmt.Println("Arguments:")
+			fmt.Println("  template      Template to use (nextjs-golden-path, react-typescript, etc.)")
+			fmt.Println("  project-name  Name of the project to create")
+			fmt.Println()
+			fmt.Println("Flags:")
+			fmt.Println("  --owner string           Project owner (required)")
+			fmt.Println("  --no-testing            Disable testing framework")
+			fmt.Println("  --no-tailwind           Disable Tailwind CSS")
+			fmt.Println("  --no-docker             Disable Docker configuration")
+			fmt.Println("  --no-install-deps       Skip dependency installation")
+			fmt.Println("  --no-git                Skip Git repository initialization")
+			fmt.Println("  --testing-framework     Testing framework (Jest/Vitest)")
+			fmt.Println("  --help                   Show this help message")
+			fmt.Println()
+			fmt.Println("Examples:")
+			fmt.Println("  open-workbench-cli create nextjs-golden-path my-app --owner=\"John Doe\"")
+			fmt.Println("  open-workbench-cli create react-typescript my-react-app --no-testing --no-tailwind")
+			fmt.Println("  open-workbench-cli create express-api my-api --owner=\"Dev Team\" --docker")
+			return
+		}
+	}
+
+	// Check if we have enough arguments
+	if len(os.Args) < 4 {
+		fmt.Println("Error: Missing required arguments")
+		fmt.Println("Usage: open-workbench-cli create <template> <project-name> --owner=\"Your Name\"")
+		fmt.Println()
+		fmt.Println("Run 'open-workbench-cli create --help' for detailed usage and examples")
+		os.Exit(1)
+	}
+
+	templateName := os.Args[2]
+	projectName := os.Args[3]
+
+	// Simple flag parsing
+	owner := ""
+	includeTesting := true
+	includeTailwind := true
+	includeDocker := true
+	installDeps := true
+	initGit := true
+	testingFramework := "Jest"
+
+	// Parse remaining arguments as flags
+	for i := 4; i < len(os.Args); i++ {
+		arg := os.Args[i]
+		switch {
+		case arg == "--help" || arg == "-h":
+			fmt.Println("Usage: open-workbench-cli create <template> <project-name> [flags]")
+			fmt.Println()
+			fmt.Println("Arguments:")
+			fmt.Println("  template      Template to use (nextjs-golden-path, react-typescript, etc.)")
+			fmt.Println("  project-name  Name of the project to create")
+			fmt.Println()
+			fmt.Println("Flags:")
+			fmt.Println("  --owner string           Project owner (required)")
+			fmt.Println("  --no-testing            Disable testing framework")
+			fmt.Println("  --no-tailwind           Disable Tailwind CSS")
+			fmt.Println("  --no-docker             Disable Docker configuration")
+			fmt.Println("  --no-install-deps       Skip dependency installation")
+			fmt.Println("  --no-git                Skip Git repository initialization")
+			fmt.Println("  --testing-framework     Testing framework (Jest/Vitest)")
+			fmt.Println("  --help                   Show this help message")
+			fmt.Println()
+			fmt.Println("Examples:")
+			fmt.Println("  open-workbench-cli create nextjs-golden-path my-app --owner=\"John Doe\"")
+			fmt.Println("  open-workbench-cli create react-typescript my-react-app --no-testing --no-tailwind")
+			fmt.Println("  open-workbench-cli create express-api my-api --owner=\"Dev Team\" --docker")
+			return
+		case strings.HasPrefix(arg, "--owner="):
+			owner = strings.TrimPrefix(arg, "--owner=")
+		case arg == "--no-testing":
+			includeTesting = false
+		case arg == "--no-tailwind":
+			includeTailwind = false
+		case arg == "--no-docker":
+			includeDocker = false
+		case arg == "--no-install-deps":
+			installDeps = false
+		case arg == "--no-git":
+			initGit = false
+		case strings.HasPrefix(arg, "--testing-framework="):
+			testingFramework = strings.TrimPrefix(arg, "--testing-framework=")
+		}
+	}
+
+	// Validate required flags
+	if owner == "" {
+		fmt.Println("Error: --owner flag is required")
+		fmt.Println("Usage: open-workbench-cli create <template> <project-name> --owner=\"Your Name\"")
+		fmt.Println()
+		fmt.Println("Run 'open-workbench-cli create --help' for detailed usage and examples")
+		os.Exit(1)
+	}
+
+	// Validate project name format
+	if !regexp.MustCompile(`^[a-z0-9-]+$`).MatchString(projectName) {
+		fmt.Println("Error: Project name can only contain lowercase letters, numbers, and hyphens")
+		os.Exit(1)
+	}
+
+	// Load the template manifest to validate it exists
+	_, err := templating.GetTemplateInfo(templatesFS, templateName)
+	if err != nil {
+		fmt.Printf("❌ %s\n", templating.FormatErrorForUser(err))
+		os.Exit(1)
+	}
+
+	// Create parameter values from flags
+	parameterValues := map[string]interface{}{
+		"ProjectName":      projectName,
+		"Owner":            owner,
+		"IncludeTesting":   includeTesting,
+		"TestingFramework": testingFramework,
+		"IncludeTailwind":  includeTailwind,
+		"IncludeDocker":    includeDocker,
+		"InstallDeps":      installDeps,
+		"InitGit":          initGit,
+	}
+
+	// Execute scaffolding
+	scaffoldAndApplyDynamic(templateName, parameterValues)
 }
 
 // scaffoldAndApplyDynamic orchestrates the complete project scaffolding process
@@ -164,14 +291,20 @@ func scaffoldAndApplyDynamic(templateName string, parameterValues map[string]int
 	// Load and validate the template manifest
 	templateInfo, err := templating.GetTemplateInfo(templatesFS, templateName)
 	if err != nil {
-		log.Fatalf("❌ Could not load template manifest: %v", err)
+		// Use the new error formatting system
+		fmt.Printf("❌ %s\n", templating.FormatErrorForUser(err))
+		os.Exit(1)
 	}
 
 	// Extract the project name from collected parameters
 	// This is a required parameter for all templates
 	projectName, ok := parameterValues["ProjectName"].(string)
 	if !ok {
-		log.Fatalf("❌ ProjectName parameter is required")
+		fmt.Println("❌ ProjectName parameter is required")
+		fmt.Println("\nPossible solutions:")
+		fmt.Println("• Ensure you provided a project name during setup")
+		fmt.Println("• Check that the template configuration is correct")
+		os.Exit(1)
 	}
 
 	destDir := projectName
@@ -179,23 +312,22 @@ func scaffoldAndApplyDynamic(templateName string, parameterValues map[string]int
 	fmt.Printf("📂 Scaffolding project in './%s'...\n", destDir)
 
 	// Create a template processor with the manifest and parameter values
-	processor := templating.NewTemplateProcessor(templateInfo.Manifest, parameterValues)
+	// Use verbose mode for detailed progress reporting
+	processor := templating.NewTemplateProcessor(templateInfo.Manifest, parameterValues, true)
 
 	// Execute the main scaffolding process
 	// This handles file copying, template processing, and variable substitution
 	err = processor.ScaffoldProject(templatesFS, templateName, destDir)
 	if err != nil {
-		log.Fatalf("❌ Failed to scaffold project: %v", err)
+		fmt.Printf("❌ %s\n", templating.FormatErrorForUser(err))
+		os.Exit(1)
 	}
 
-	fmt.Println("✏️  Applying templates...")
-	// Note: Template processing is now handled by the ScaffoldProject method
-
 	// Execute post-scaffolding actions such as file deletion and command execution
-	fmt.Println("🔧 Executing post-scaffolding actions...")
 	err = processor.ExecutePostScaffoldActions(destDir)
 	if err != nil {
-		log.Fatalf("❌ Failed to execute post-scaffolding actions: %v", err)
+		fmt.Printf("❌ %s\n", templating.FormatErrorForUser(err))
+		os.Exit(1)
 	}
 
 	// Provide success feedback to the user
@@ -224,8 +356,47 @@ func promptForTemplateParameters(manifest *templating.TemplateManifest) (map[str
 	// Get parameters organized by their groups for better user experience
 	groups := parameterProcessor.GetParameterGroups()
 
-	// Process each parameter group
+	// Define the order in which groups should be processed
+	groupOrder := []string{"Project Details", "Testing & Quality", "Styling", "Deployment", "Final Steps"}
+
+	// Process each parameter group in the defined order
+	for _, groupName := range groupOrder {
+		params, exists := groups[groupName]
+		if !exists || len(params) == 0 {
+			continue
+		}
+
+		// Display group header with visual separator
+		fmt.Printf("\n📋 %s\n", groupName)
+		fmt.Println(strings.Repeat("-", len(groupName)+4))
+
+		// Prompt for each parameter in the group
+		for _, param := range params {
+			value, err := promptForParameter(param)
+			if err != nil {
+				return nil, err
+			}
+
+			// Store the collected value and update the processor state
+			values[param.Name] = value
+			parameterProcessor.SetValue(param.Name, value)
+		}
+	}
+
+	// Process any remaining groups that weren't in the predefined order
 	for groupName, params := range groups {
+		// Skip groups we've already processed
+		alreadyProcessed := false
+		for _, processedGroup := range groupOrder {
+			if groupName == processedGroup {
+				alreadyProcessed = true
+				break
+			}
+		}
+		if alreadyProcessed {
+			continue
+		}
+
 		// Skip empty groups
 		if len(params) == 0 {
 			continue

@@ -19,6 +19,7 @@ import (
 type TemplateProcessor struct {
 	manifest *TemplateManifest      // The template manifest containing configuration
 	values   map[string]interface{} // Collected parameter values for substitution
+	progress *ProgressReporter      // Progress reporter for user feedback
 }
 
 // NewTemplateProcessor creates a new template processor.
@@ -28,13 +29,15 @@ type TemplateProcessor struct {
 // Parameters:
 //   - manifest: The template manifest containing template configuration
 //   - values: A map of parameter names to their collected values
+//   - verbose: Whether to show detailed progress information
 //
 // Returns:
 //   - A pointer to the initialized TemplateProcessor
-func NewTemplateProcessor(manifest *TemplateManifest, values map[string]interface{}) *TemplateProcessor {
+func NewTemplateProcessor(manifest *TemplateManifest, values map[string]interface{}, verbose bool) *TemplateProcessor {
 	return &TemplateProcessor{
 		manifest: manifest,
 		values:   values,
+		progress: NewProgressReporter(0, verbose), // Will be updated with actual steps
 	}
 }
 
@@ -135,9 +138,12 @@ func (tp *TemplateProcessor) getTemplateFunctions() template.FuncMap {
 func (tp *TemplateProcessor) ScaffoldProject(templateFS fs.FS, templateName, destDir string) error {
 	sourceDir := fmt.Sprintf("templates/%s", templateName)
 
+	// Start progress reporting
+	tp.progress.StartOperation("Scaffolding project")
+
 	// Create the destination directory if it doesn't exist
 	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return fmt.Errorf("failed to create destination directory: %w", err)
+		return NewFileSystemError("create destination directory", destDir, err)
 	}
 
 	// Walk through the template directory and process each file
@@ -160,7 +166,7 @@ func (tp *TemplateProcessor) ScaffoldProject(templateFS fs.FS, templateName, des
 		// Process the filename template
 		processedFileName, err := tp.ProcessFileName(d.Name())
 		if err != nil {
-			return fmt.Errorf("failed to process filename %s: %w", d.Name(), err)
+			return NewTemplateProcessingError(templateName, fmt.Sprintf("Failed to process filename '%s'", d.Name()), err)
 		}
 
 		// If filename is empty after processing, skip this file/directory
@@ -174,11 +180,16 @@ func (tp *TemplateProcessor) ScaffoldProject(templateFS fs.FS, templateName, des
 
 		if d.IsDir() {
 			// Create directory with appropriate permissions
-			return os.MkdirAll(destPath, 0755)
+			if err := os.MkdirAll(destPath, 0755); err != nil {
+				return NewFileSystemError("create directory", destPath, err)
+			}
 		} else {
 			// Process and write the file
-			return tp.processAndWriteFile(templateFS, path, destPath)
+			if err := tp.processAndWriteFile(templateFS, path, destPath); err != nil {
+				return err
+			}
 		}
+		return nil
 	})
 }
 
@@ -197,24 +208,24 @@ func (tp *TemplateProcessor) processAndWriteFile(templateFS fs.FS, sourcePath, d
 	// Read the source file content
 	content, err := fs.ReadFile(templateFS, sourcePath)
 	if err != nil {
-		return fmt.Errorf("failed to read source file %s: %w", sourcePath, err)
+		return NewFileSystemError("read source file", sourcePath, err)
 	}
 
 	// Process the file content with template substitution
 	processedContent, err := tp.ProcessTemplate(string(content))
 	if err != nil {
-		return fmt.Errorf("failed to process file content %s: %w", sourcePath, err)
+		return NewTemplateProcessingError("", fmt.Sprintf("Failed to process file content: %s", sourcePath), err)
 	}
 
 	// Ensure the destination directory exists
 	destDir := filepath.Dir(destPath)
 	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return fmt.Errorf("failed to create destination directory: %w", err)
+		return NewFileSystemError("create destination directory", destDir, err)
 	}
 
 	// Write the processed content to the destination file
 	if err := os.WriteFile(destPath, []byte(processedContent), 0644); err != nil {
-		return fmt.Errorf("failed to write destination file %s: %w", destPath, err)
+		return NewFileSystemError("write destination file", destPath, err)
 	}
 
 	return nil
@@ -235,14 +246,17 @@ func (tp *TemplateProcessor) ExecutePostScaffoldActions(projectDir string) error
 		return nil
 	}
 
+	// Start progress reporting for post-scaffolding actions
+	tp.progress.StartOperation("Executing post-scaffolding actions")
+
 	// Execute file deletions based on conditions
 	if err := tp.executeFileDeletions(projectDir); err != nil {
-		return fmt.Errorf("failed to execute file deletions: %w", err)
+		return NewTemplateProcessingError("", "Failed to execute file deletions", err)
 	}
 
 	// Execute commands based on conditions
 	if err := tp.executeCommands(projectDir); err != nil {
-		return fmt.Errorf("failed to execute commands: %w", err)
+		return NewTemplateProcessingError("", "Failed to execute commands", err)
 	}
 
 	return nil
@@ -264,19 +278,23 @@ func (tp *TemplateProcessor) executeFileDeletions(projectDir string) error {
 	}
 
 	// Process each file deletion action
-	for _, fileAction := range tp.manifest.PostScaffold.FilesToDelete {
+	for i, fileAction := range tp.manifest.PostScaffold.FilesToDelete {
+		// Report progress
+		tp.progress.ReportProgress(fmt.Sprintf("Checking file deletion: %s", fileAction.Path), i+1, len(tp.manifest.PostScaffold.FilesToDelete))
+
 		// Evaluate the condition for this file deletion
 		shouldDelete, err := tp.evaluateCondition(fileAction.Condition)
 		if err != nil {
-			return fmt.Errorf("failed to evaluate condition for file deletion %s: %w", fileAction.Path, err)
+			return NewTemplateProcessingError("", fmt.Sprintf("Failed to evaluate condition for file deletion '%s'", fileAction.Path), err)
 		}
 
 		// Delete the file if the condition is met
 		if shouldDelete {
 			filePath := filepath.Join(projectDir, fileAction.Path)
 			if err := os.RemoveAll(filePath); err != nil {
-				return fmt.Errorf("failed to delete file %s: %w", filePath, err)
+				return NewFileSystemError("delete file", filePath, err)
 			}
+			tp.progress.CompleteStep(fmt.Sprintf("Deleted file: %s", fileAction.Path), true, "")
 		}
 	}
 
@@ -299,22 +317,25 @@ func (tp *TemplateProcessor) executeCommands(projectDir string) error {
 	}
 
 	// Process each command action
-	for _, commandAction := range tp.manifest.PostScaffold.Commands {
+	for i, commandAction := range tp.manifest.PostScaffold.Commands {
 		shouldExecute := true
+
+		// Report progress
+		tp.progress.ReportProgress(fmt.Sprintf("Checking command: %s", commandAction.Description), i+1, len(tp.manifest.PostScaffold.Commands))
 
 		// Evaluate the condition for this command if specified
 		if commandAction.Condition != "" {
 			var err error
 			shouldExecute, err = tp.evaluateCondition(commandAction.Condition)
 			if err != nil {
-				return fmt.Errorf("failed to evaluate condition for command %s: %w", commandAction.Command, err)
+				return NewTemplateProcessingError("", fmt.Sprintf("Failed to evaluate condition for command '%s'", commandAction.Command), err)
 			}
 		}
 
 		// Execute the command if the condition is met
 		if shouldExecute {
 			if err := tp.executeCommand(commandAction, projectDir); err != nil {
-				return fmt.Errorf("failed to execute command %s: %w", commandAction.Command, err)
+				return NewCommandExecutionError(commandAction.Command, commandAction.Description, err)
 			}
 		}
 	}
@@ -403,6 +424,9 @@ func (tp *TemplateProcessor) evaluateCondition(condition string) (bool, error) {
 // Returns:
 //   - An error if command execution fails
 func (tp *TemplateProcessor) executeCommand(commandAction CommandAction, projectDir string) error {
+	// Report command execution
+	tp.progress.ReportCommandExecution(commandAction.Command, commandAction.Description)
+
 	// This is a placeholder for command execution
 	// In a real implementation, you would use os/exec to run the command
 	// For now, we'll just print what would be executed
@@ -415,5 +439,7 @@ func (tp *TemplateProcessor) executeCommand(commandAction CommandAction, project
 	// cmd.Dir = projectDir
 	// return cmd.Run()
 
+	// Report successful completion
+	tp.progress.ReportCommandResult(commandAction.Command, true, "")
 	return nil
 }

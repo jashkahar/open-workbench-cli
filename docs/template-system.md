@@ -357,7 +357,8 @@ Run commands after scaffolding:
     "commands": [
       {
         "command": "git init",
-        "description": "Initializing Git repository..."
+        "description": "Initializing Git repository...",
+        "condition": "InitGit == true"
       },
       {
         "command": "npm install",
@@ -373,6 +374,23 @@ Run commands after scaffolding:
   }
 }
 ```
+
+### Optional Git Initialization
+
+The `InitGit` parameter allows users to control whether git initialization occurs:
+
+```json
+{
+  "name": "InitGit",
+  "prompt": "Initialize Git repository?",
+  "group": "Final Steps",
+  "type": "boolean",
+  "default": true,
+  "helpText": "This will run 'git init' to initialize a new Git repository."
+}
+```
+
+This parameter is available in CLI mode via the `--no-git` flag.
 
 ## 📝 Template File Processing
 
@@ -675,6 +693,6 @@ open-workbench-cli preview template-name --params '{"ProjectName":"test"}'
 
 ---
 
-**Last Updated**: [Current Date]  
-**Version**: [Current Version]  
+**Last Updated**: 07/29/2025  
+**Version**: v0.5.0  
 **Maintainers**: [Project Maintainers]
