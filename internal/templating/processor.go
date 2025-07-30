@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"text/template"
 )
@@ -334,8 +336,19 @@ func (tp *TemplateProcessor) executeCommands(projectDir string) error {
 
 		// Execute the command if the condition is met
 		if shouldExecute {
-			if err := tp.executeCommand(commandAction, projectDir); err != nil {
-				return NewCommandExecutionError(commandAction.Command, commandAction.Description, err)
+			err := tp.executeCommand(commandAction, projectDir)
+			if err != nil {
+				// Try fallback strategies for npm install
+				if strings.Contains(commandAction.Command, "npm install") {
+					err = tp.tryNpmFallback(commandAction, projectDir)
+				}
+				// Try fallback strategies for pip install
+				if strings.Contains(commandAction.Command, "pip install") {
+					err = tp.tryPipFallback(commandAction, projectDir)
+				}
+				if err != nil {
+					return NewCommandExecutionError(commandAction.Command, commandAction.Description, err)
+				}
 			}
 		}
 	}
@@ -413,9 +426,8 @@ func (tp *TemplateProcessor) evaluateCondition(condition string) (bool, error) {
 }
 
 // executeCommand executes a single command.
-// This function runs a shell command in the project directory.
-// Currently, this is a placeholder implementation that logs the command.
-// In a real implementation, you would use os/exec to run the command.
+// This function runs a shell command in the project directory with enhanced
+// cross-platform support and error handling.
 //
 // Parameters:
 //   - commandAction: The command action to execute
@@ -427,19 +439,203 @@ func (tp *TemplateProcessor) executeCommand(commandAction CommandAction, project
 	// Report command execution
 	tp.progress.ReportCommandExecution(commandAction.Command, commandAction.Description)
 
-	// This is a placeholder for command execution
-	// In a real implementation, you would use os/exec to run the command
-	// For now, we'll just print what would be executed
+	// Create the command with platform-specific handling
+	var cmd *exec.Cmd
+	var shellArgs []string
 
-	fmt.Printf("Would execute: %s\n", commandAction.Command)
-	fmt.Printf("Description: %s\n", commandAction.Description)
+	// Determine the shell and arguments based on the operating system
+	switch runtime.GOOS {
+	case "windows":
+		// On Windows, use cmd.exe with /C flag
+		shellArgs = []string{"/C", commandAction.Command}
+		cmd = exec.Command("cmd", shellArgs...)
+	case "darwin":
+		// On macOS, use bash for better compatibility
+		shellArgs = []string{"-c", commandAction.Command}
+		cmd = exec.Command("bash", shellArgs...)
+	default:
+		// On Linux and other Unix-like systems, use sh
+		shellArgs = []string{"-c", commandAction.Command}
+		cmd = exec.Command("sh", shellArgs...)
+	}
 
-	// TODO: Implement actual command execution using os/exec
-	// cmd := exec.Command("sh", "-c", commandAction.Command)
-	// cmd.Dir = projectDir
-	// return cmd.Run()
+	// Set the working directory
+	cmd.Dir = projectDir
+
+	// Set environment variables for better compatibility
+	cmd.Env = append(os.Environ(),
+		"CI=true", // Prevent interactive prompts
+		"NODE_ENV=development",
+	)
+
+	// Capture output for reporting
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		// Try to provide more helpful error messages
+		errorMsg := tp.enhanceErrorMessage(commandAction.Command, string(output), err)
+		tp.progress.ReportCommandResult(commandAction.Command, false, string(output))
+		return fmt.Errorf("command '%s' failed: %s", commandAction.Command, errorMsg)
+	}
 
 	// Report successful completion
-	tp.progress.ReportCommandResult(commandAction.Command, true, "")
+	tp.progress.ReportCommandResult(commandAction.Command, true, string(output))
 	return nil
+}
+
+// enhanceErrorMessage provides more helpful error messages for common issues
+func (tp *TemplateProcessor) enhanceErrorMessage(command, output string, err error) string {
+	outputLower := strings.ToLower(output)
+
+	// Handle npm dependency conflicts
+	if strings.Contains(outputLower, "erresolve") || strings.Contains(outputLower, "peer dependency") {
+		return fmt.Sprintf("Dependency conflict detected. Try running with --legacy-peer-deps flag. Original error: %v", err)
+	}
+
+	// Handle Python permission issues
+	if strings.Contains(outputLower, "permission denied") || strings.Contains(outputLower, "access is denied") {
+		return fmt.Sprintf("Permission denied. Try running as administrator or check Python installation. Original error: %v", err)
+	}
+
+	// Handle Python virtual environment issues
+	if strings.Contains(outputLower, "venv") && strings.Contains(outputLower, "not found") {
+		return fmt.Sprintf("Python virtual environment not found. Ensure Python is installed and accessible. Original error: %v", err)
+	}
+
+	// Handle git issues
+	if strings.Contains(outputLower, "git") && strings.Contains(outputLower, "not found") {
+		return fmt.Sprintf("Git not found. Ensure Git is installed and in PATH. Original error: %v", err)
+	}
+
+	// Handle npm issues
+	if strings.Contains(outputLower, "npm") && strings.Contains(outputLower, "not found") {
+		return fmt.Sprintf("npm not found. Ensure Node.js is installed and in PATH. Original error: %v", err)
+	}
+
+	// Default error message
+	return fmt.Sprintf("%v (output: %s)", err, strings.TrimSpace(output))
+}
+
+// tryNpmFallback attempts alternative npm install strategies when the initial install fails
+func (tp *TemplateProcessor) tryNpmFallback(commandAction CommandAction, projectDir string) error {
+	// Try with --legacy-peer-deps flag
+	fallbackCommand := strings.Replace(commandAction.Command, "npm install", "npm install --legacy-peer-deps", 1)
+
+	tp.progress.ReportCommandExecution(fallbackCommand, commandAction.Description+" (with --legacy-peer-deps)")
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("cmd", "/C", fallbackCommand)
+	case "darwin":
+		cmd = exec.Command("bash", "-c", fallbackCommand)
+	default:
+		cmd = exec.Command("sh", "-c", fallbackCommand)
+	}
+
+	cmd.Dir = projectDir
+	cmd.Env = append(os.Environ(), "CI=true", "NODE_ENV=development")
+
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		tp.progress.ReportCommandResult(fallbackCommand, true, string(output))
+		return nil
+	}
+
+	// Try with --force flag as last resort
+	forceCommand := strings.Replace(commandAction.Command, "npm install", "npm install --force", 1)
+	tp.progress.ReportCommandExecution(forceCommand, commandAction.Description+" (with --force)")
+
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("cmd", "/C", forceCommand)
+	case "darwin":
+		cmd = exec.Command("bash", "-c", forceCommand)
+	default:
+		cmd = exec.Command("sh", "-c", forceCommand)
+	}
+
+	cmd.Dir = projectDir
+	cmd.Env = append(os.Environ(), "CI=true", "NODE_ENV=development")
+
+	output, err = cmd.CombinedOutput()
+	if err == nil {
+		tp.progress.ReportCommandResult(forceCommand, true, string(output))
+		return nil
+	}
+
+	return fmt.Errorf("npm install failed even with fallback strategies: %v", err)
+}
+
+// tryPipFallback attempts alternative pip install strategies when the initial install fails
+func (tp *TemplateProcessor) tryPipFallback(commandAction CommandAction, projectDir string) error {
+	// Try with --user flag to avoid permission issues
+	fallbackCommand := strings.Replace(commandAction.Command, "pip install", "pip install --user", 1)
+
+	tp.progress.ReportCommandExecution(fallbackCommand, commandAction.Description+" (with --user flag)")
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("cmd", "/C", fallbackCommand)
+	case "darwin":
+		cmd = exec.Command("bash", "-c", fallbackCommand)
+	default:
+		cmd = exec.Command("sh", "-c", fallbackCommand)
+	}
+
+	cmd.Dir = projectDir
+	cmd.Env = append(os.Environ(), "CI=true")
+
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		tp.progress.ReportCommandResult(fallbackCommand, true, string(output))
+		return nil
+	}
+
+	// Try with --no-cache-dir flag
+	noCacheCommand := strings.Replace(commandAction.Command, "pip install", "pip install --no-cache-dir", 1)
+	tp.progress.ReportCommandExecution(noCacheCommand, commandAction.Description+" (with --no-cache-dir)")
+
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("cmd", "/C", noCacheCommand)
+	case "darwin":
+		cmd = exec.Command("bash", "-c", noCacheCommand)
+	default:
+		cmd = exec.Command("sh", "-c", noCacheCommand)
+	}
+
+	cmd.Dir = projectDir
+	cmd.Env = append(os.Environ(), "CI=true")
+
+	output, err = cmd.CombinedOutput()
+	if err == nil {
+		tp.progress.ReportCommandResult(noCacheCommand, true, string(output))
+		return nil
+	}
+
+	// Try with python -m pip as last resort
+	pythonPipCommand := strings.Replace(commandAction.Command, "pip install", "python -m pip install", 1)
+	tp.progress.ReportCommandExecution(pythonPipCommand, commandAction.Description+" (using python -m pip)")
+
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("cmd", "/C", pythonPipCommand)
+	case "darwin":
+		cmd = exec.Command("bash", "-c", pythonPipCommand)
+	default:
+		cmd = exec.Command("sh", "-c", pythonPipCommand)
+	}
+
+	cmd.Dir = projectDir
+	cmd.Env = append(os.Environ(), "CI=true")
+
+	output, err = cmd.CombinedOutput()
+	if err == nil {
+		tp.progress.ReportCommandResult(pythonPipCommand, true, string(output))
+		return nil
+	}
+
+	return fmt.Errorf("pip install failed even with fallback strategies: %v", err)
 }
