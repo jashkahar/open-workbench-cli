@@ -117,7 +117,7 @@ open-workbench-cli/
 ├── .github/workflows/        # GitHub Actions workflows
 │   └── release.yml          # Release workflow
 └── templates/                # Template directory
-    ├── nextjs-golden-path/   # Next.js template
+    ├── nextjs-full-stack/    # Next.js template
     └── fastapi-basic/        # FastAPI template
 ```
 

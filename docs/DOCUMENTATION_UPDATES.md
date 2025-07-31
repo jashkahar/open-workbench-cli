@@ -153,7 +153,7 @@ Run 'open-workbench-cli' for interactive mode
 
 ## 📋 Templates Updated
 
-### 1. `nextjs-golden-path/template.json`
+### 1. `nextjs-full-stack/template.json`
 
 - ✅ Added `InitGit` parameter
 - ✅ Updated git init command with condition

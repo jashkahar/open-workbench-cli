@@ -45,7 +45,7 @@ if err != nil {
 }
 
 // Load specific template
-manifest, err := templating.LoadTemplateManifest(templatesFS, "nextjs-golden-path")
+manifest, err := templating.LoadTemplateManifest(templatesFS, "nextjs-full-stack")
 if err != nil {
     log.Fatalf("Failed to load template: %v", err)
 }

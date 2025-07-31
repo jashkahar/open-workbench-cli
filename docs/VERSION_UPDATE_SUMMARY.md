@@ -121,7 +121,7 @@ This document summarizes all the version and date updates made for the v0.5.0 re
 
 All templates now include the `InitGit` parameter:
 
-- ✅ `nextjs-golden-path/template.json`
+- ✅ `nextjs-full-stack/template.json`
 - ✅ `fastapi-basic/template.json`
 - ✅ `express-api/template.json`
 - ✅ `react-typescript/template.json`
