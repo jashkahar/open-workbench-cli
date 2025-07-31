@@ -123,7 +123,7 @@ open-workbench-cli create <template> <project-name> --owner="Your Name" [flags]
 
 ```bash
 # Create a Next.js project with all features
-open-workbench-cli create nextjs-golden-path my-app --owner="John Doe"
+open-workbench-cli create nextjs-full-stack my-app --owner="John Doe"
 
 # Create a React project without testing
 open-workbench-cli create react-typescript my-react-app --owner="Dev Team" --no-testing
@@ -390,12 +390,12 @@ For automation and scripting:
 
 ```bash
 # Basic usage
-open-workbench-cli create --name my-project --template nextjs-golden-path
+open-workbench-cli create --name my-project --template nextjs-full-stack
 
 # With parameters
 open-workbench-cli create \
   --name my-project \
-  --template nextjs-golden-path \
+  --template nextjs-full-stack \
   --param "IncludeTesting=true" \
   --param "TestingFramework=Jest" \
   --param "IncludeDocker=true"
@@ -406,7 +406,7 @@ open-workbench-cli create \
 Preview template output without creating files:
 
 ```bash
-open-workbench-cli preview nextjs-golden-path --params '{"ProjectName":"test"}'
+open-workbench-cli preview nextjs-full-stack --params '{"ProjectName":"test"}'
 ```
 
 ### Custom Templates

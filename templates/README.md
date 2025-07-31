@@ -7,7 +7,7 @@ This directory contains all the available project templates for the Open Workben
 ```
 templates/
 ├── README.md                    # This file
-├── nextjs-golden-path/         # Next.js production template
+├── nextjs-full-stack/          # Next.js full-stack template
 │   ├── template.json           # Template manifest
 │   ├── package.json            # Package configuration
 │   ├── Dockerfile              # Docker configuration
@@ -44,7 +44,7 @@ templates/
 
 ## 🎯 Available Templates
 
-### 🎨 nextjs-golden-path
+### 🎨 nextjs-full-stack
 
 A production-ready Next.js application with comprehensive tooling and best practices.
 
