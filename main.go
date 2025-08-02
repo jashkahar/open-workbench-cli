@@ -13,8 +13,8 @@
 //
 // Usage:
 //
-//	open-workbench-cli        # Interactive mode
-//	open-workbench-cli create # CLI mode with flags
+//	om        # Interactive mode
+//	om create # CLI mode with flags
 package main
 
 import (
@@ -32,7 +32,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 
-	"github.com/jashkahar/open-workbench-cli/internal/templating"
+	"github.com/jashkahar/open-workbench-platform/internal/templating"
 )
 
 // templatesFS embeds the templates directory into the binary.
@@ -59,11 +59,11 @@ func main() {
 		default:
 			fmt.Printf("Unknown command: %s\n", os.Args[1])
 			fmt.Println("Available commands:")
-			fmt.Println("  open-workbench-cli          # Interactive mode")
-			fmt.Println("  open-workbench-cli create   # CLI mode with flags")
+			fmt.Println("  om          # Interactive mode")
+			fmt.Println("  om create   # CLI mode with flags")
 			fmt.Println()
-			fmt.Println("Run 'open-workbench-cli create --help' for detailed CLI usage")
-			fmt.Println("Run 'open-workbench-cli' for interactive mode")
+			fmt.Println("Run 'om create --help' for detailed CLI usage")
+			fmt.Println("Run 'om' for interactive mode")
 			os.Exit(1)
 		}
 		return
@@ -144,12 +144,12 @@ func runInteractiveScaffold() {
 // This function parses command-line arguments and creates projects without
 // any interactive prompts, making it suitable for automation and scripting.
 //
-// Usage: open-workbench-cli create <template> <project-name> [flags]
+// Usage: om create <template> <project-name> [flags]
 func runCLICreate() {
 	// Check for help flag first
 	for i := 2; i < len(os.Args); i++ {
 		if os.Args[i] == "--help" || os.Args[i] == "-h" {
-			fmt.Println("Usage: open-workbench-cli create <template> <project-name> [flags]")
+			fmt.Println("Usage: om create <template> <project-name> [flags]")
 			fmt.Println()
 			fmt.Println("Arguments:")
 			fmt.Println("  template      Template to use (nextjs-full-stack, react-typescript, etc.)")
@@ -166,9 +166,9 @@ func runCLICreate() {
 			fmt.Println("  --help                   Show this help message")
 			fmt.Println()
 			fmt.Println("Examples:")
-			fmt.Println("  open-workbench-cli create nextjs-full-stack my-app --owner=\"John Doe\"")
-			fmt.Println("  open-workbench-cli create react-typescript my-react-app --no-testing --no-tailwind")
-			fmt.Println("  open-workbench-cli create express-api my-api --owner=\"Dev Team\" --docker")
+			fmt.Println("  om create nextjs-full-stack my-app --owner=\"John Doe\"")
+			fmt.Println("  om create react-typescript my-react-app --no-testing --no-tailwind")
+			fmt.Println("  om create express-api my-api --owner=\"Dev Team\" --docker")
 			return
 		}
 	}
@@ -176,9 +176,9 @@ func runCLICreate() {
 	// Check if we have enough arguments
 	if len(os.Args) < 4 {
 		fmt.Println("Error: Missing required arguments")
-		fmt.Println("Usage: open-workbench-cli create <template> <project-name> --owner=\"Your Name\"")
+		fmt.Println("Usage: om create <template> <project-name> --owner=\"Your Name\"")
 		fmt.Println()
-		fmt.Println("Run 'open-workbench-cli create --help' for detailed usage and examples")
+		fmt.Println("Run 'om create --help' for detailed usage and examples")
 		os.Exit(1)
 	}
 
@@ -199,7 +199,7 @@ func runCLICreate() {
 		arg := os.Args[i]
 		switch {
 		case arg == "--help" || arg == "-h":
-			fmt.Println("Usage: open-workbench-cli create <template> <project-name> [flags]")
+			fmt.Println("Usage: om create <template> <project-name> [flags]")
 			fmt.Println()
 			fmt.Println("Arguments:")
 			fmt.Println("  template      Template to use (nextjs-full-stack, react-typescript, etc.)")
@@ -216,9 +216,9 @@ func runCLICreate() {
 			fmt.Println("  --help                   Show this help message")
 			fmt.Println()
 			fmt.Println("Examples:")
-			fmt.Println("  open-workbench-cli create nextjs-full-stack my-app --owner=\"John Doe\"")
-			fmt.Println("  open-workbench-cli create react-typescript my-react-app --no-testing --no-tailwind")
-			fmt.Println("  open-workbench-cli create express-api my-api --owner=\"Dev Team\" --docker")
+			fmt.Println("  om create nextjs-full-stack my-app --owner=\"John Doe\"")
+			fmt.Println("  om create react-typescript my-react-app --no-testing --no-tailwind")
+			fmt.Println("  om create express-api my-api --owner=\"Dev Team\" --docker")
 			return
 		case strings.HasPrefix(arg, "--owner="):
 			owner = strings.TrimPrefix(arg, "--owner=")
@@ -240,9 +240,9 @@ func runCLICreate() {
 	// Validate required flags
 	if owner == "" {
 		fmt.Println("Error: --owner flag is required")
-		fmt.Println("Usage: open-workbench-cli create <template> <project-name> --owner=\"Your Name\"")
+		fmt.Println("Usage: om create <template> <project-name> --owner=\"Your Name\"")
 		fmt.Println()
-		fmt.Println("Run 'open-workbench-cli create --help' for detailed usage and examples")
+		fmt.Println("Run 'om create --help' for detailed usage and examples")
 		os.Exit(1)
 	}
 

@@ -1,4 +1,4 @@
-module github.com/jashkahar/open-workbench-cli
+module github.com/jashkahar/open-workbench-platform
 
 go 1.24.5
 

@@ -665,13 +665,13 @@ File names can also be templated:
 
 ```bash
 # Validate template structure
-open-workbench-cli validate template-name
+om validate template-name
 
 # Test parameter collection
-open-workbench-cli test-params template-name
+om test-params template-name
 
 # Preview template output
-open-workbench-cli preview template-name --params '{"ProjectName":"test"}'
+om preview template-name --params '{"ProjectName":"test"}'
 ```
 
 ## 🔮 Future Enhancements

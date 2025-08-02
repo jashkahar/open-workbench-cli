@@ -376,10 +376,10 @@ export default App;
 
 ```bash
 # Build the CLI
-go build -o open-workbench-cli main.go
+go build -o om main.go
 
 # Test your template
-./open-workbench-cli ui
+./om ui
 # Select your template and test the process
 ```
 

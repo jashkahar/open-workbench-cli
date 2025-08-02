@@ -10,7 +10,7 @@ Choose your preferred installation method:
 
 #### Option 1: Download from GitHub Releases
 
-1. Go to [GitHub Releases](https://github.com/jashkahar/open-workbench-cli/releases)
+1. Go to [GitHub Releases](https://github.com/jashkahar/open-workbench-platform/releases)
 2. Download the binary for your operating system
 3. Extract and add to your PATH, or run directly
 
@@ -18,39 +18,39 @@ Choose your preferred installation method:
 
 ```bash
 # Homebrew (macOS)
-brew install jashkahar/tap/open-workbench-cli
+brew install jashkahar/tap/om
 
 # Scoop (Windows)
 scoop bucket add jashkahar https://github.com/jashkahar/scoop-bucket
-scoop install open-workbench-cli
+scoop install om
 ```
 
 #### Option 3: Build from Source
 
 ```bash
-git clone https://github.com/jashkahar/open-workbench-cli.git
-cd open-workbench-cli
-go build -o open-workbench-cli main.go
+git clone https://github.com/jashkahar/open-workbench-platform.git
+cd open-workbench-platform
+go build -o om main.go
 ```
 
 ### First Run
 
 ```bash
 # Start the interactive TUI
-open-workbench-cli ui
+om ui
 
 # Or use simple interactive mode
-open-workbench-cli
+om
 ```
 
 ## 🎯 Using the CLI
 
 ### Available Commands
 
-| Command                     | Description                    |
-| --------------------------- | ------------------------------ |
-| `open-workbench-cli`        | Interactive mode (recommended) |
-| `open-workbench-cli create` | CLI mode with flags            |
+| Command     | Description                    |
+| ----------- | ------------------------------ |
+| `om`        | Interactive mode (recommended) |
+| `om create` | CLI mode with flags            |
 
 ### Interactive Modes
 
@@ -59,7 +59,7 @@ open-workbench-cli
 The TUI provides a beautiful, interactive interface for template selection:
 
 ```bash
-open-workbench-cli ui
+om ui
 ```
 
 **Features:**
@@ -81,7 +81,7 @@ open-workbench-cli ui
 For guided project creation with template selection:
 
 ```bash
-open-workbench-cli
+om
 ```
 
 **Features:**
@@ -96,7 +96,7 @@ open-workbench-cli
 For automation and scripting:
 
 ```bash
-open-workbench-cli create <template> <project-name> --owner="Your Name" [flags]
+om create <template> <project-name> --owner="Your Name" [flags]
 ```
 
 **Features:**
@@ -123,16 +123,16 @@ open-workbench-cli create <template> <project-name> --owner="Your Name" [flags]
 
 ```bash
 # Create a Next.js project with all features
-open-workbench-cli create nextjs-full-stack my-app --owner="John Doe"
+om create nextjs-full-stack my-app --owner="John Doe"
 
 # Create a React project without testing
-open-workbench-cli create react-typescript my-react-app --owner="Dev Team" --no-testing
+om create react-typescript my-react-app --owner="Dev Team" --no-testing
 
 # Create a FastAPI project without git initialization
-open-workbench-cli create fastapi-basic my-api --owner="Backend Team" --no-git
+om create fastapi-basic my-api --owner="Backend Team" --no-git
 
 # Get help for CLI mode
-open-workbench-cli create --help
+om create --help
 ```
 
 ### Parameter Collection
@@ -181,7 +181,7 @@ The CLI validates your input:
 ### Example Workflow
 
 ```bash
-$ open-workbench-cli ui
+$ om ui
 
 🚀 Starting Open Workbench UI...
 
@@ -390,10 +390,10 @@ For automation and scripting:
 
 ```bash
 # Basic usage
-open-workbench-cli create --name my-project --template nextjs-full-stack
+om create --name my-project --template nextjs-full-stack
 
 # With parameters
-open-workbench-cli create \
+om create \
   --name my-project \
   --template nextjs-full-stack \
   --param "IncludeTesting=true" \
@@ -406,7 +406,7 @@ open-workbench-cli create \
 Preview template output without creating files:
 
 ```bash
-open-workbench-cli preview nextjs-full-stack --params '{"ProjectName":"test"}'
+om preview nextjs-full-stack --params '{"ProjectName":"test"}'
 ```
 
 ### Custom Templates

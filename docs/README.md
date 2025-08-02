@@ -25,6 +25,7 @@ Welcome to the comprehensive documentation for Open Workbench CLI. This document
 
 ### 📋 Project Documentation
 
+- **[Strategic Roadmap](./STRATEGIC_ROADMAP.md)** - Long-term vision and development roadmap for Open Workbench Platform
 - **[Documentation Updates](./DOCUMENTATION_UPDATES.md)** - Summary of documentation updates for v0.5.0
 - **[Version Update Summary](./VERSION_UPDATE_SUMMARY.md)** - Version and date updates summary for v0.5.0
 
@@ -44,10 +45,11 @@ Welcome to the comprehensive documentation for Open Workbench CLI. This document
 
 ### For Developers
 
-1. Read the [Architecture Overview](./architecture.md) to understand the system
-2. Follow the [Development Guide](./development.md) to set up your environment
-3. Check [Contributing Guidelines](../CONTRIBUTING.md) before contributing
-4. Review [Documentation Updates](./DOCUMENTATION_UPDATES.md) for recent changes
+1. Read the [Strategic Roadmap](./STRATEGIC_ROADMAP.md) to understand the long-term vision
+2. Read the [Architecture Overview](./architecture.md) to understand the system
+3. Follow the [Development Guide](./development.md) to set up your environment
+4. Check [Contributing Guidelines](../CONTRIBUTING.md) before contributing
+5. Review [Documentation Updates](./DOCUMENTATION_UPDATES.md) for recent changes
 
 ### For Template Creators
 

@@ -3,7 +3,7 @@
 # It defines how to build, package, and release your project.
 
 # The project name
-project_name: open-workbench-cli
+project_name: om
 
 # This will be executed before the build
 before:
@@ -14,11 +14,11 @@ before:
 builds:
   - # A list of builds. Each item is a build.
     # The ID of the build. Used in the archives and other configurations.
-    id: open-workbench-cli
+    id: om
     # The path to the main package.
     main: .
     # The go binary to use.
-    binary: open-workbench-cli
+    binary: om
     # GOOS and GOARCH to build for.
     goos:
       - linux
@@ -34,7 +34,7 @@ builds:
 # Archive configuration
 archives:
   - # ID of the archive.
-    id: open-workbench-cli
+    id: om
     # The format of the archive.
     format: tar.gz
     # The name template of the archive.
@@ -46,7 +46,7 @@ archives:
 
 # Checksum configuration
 checksum:
-  name_template: 'checksums.txt'
+  name_template: "checksums.txt"
 
 # Snapshot configuration
 snapshot:
@@ -57,13 +57,13 @@ changelog:
   sort: asc
   filters:
     exclude:
-      - '^docs:'
-      - '^test:'
+      - "^docs:"
+      - "^test:"
 
 # Homebrew tap configuration
 brews:
   - # Name of the recipe
-    name: open-workbench-cli
+    name: om
     # The GitHub repository to push the formula to
     repository:
       owner: jashkahar
@@ -77,19 +77,19 @@ brews:
     # The folder inside the repository to push the formula to.
     folder: Formula
     # The homepage of the project.
-    homepage: "https://github.com/jashkahar/open-workbench-cli"
+    homepage: "https://github.com/jashkahar/open-workbench-platform"
     # The description of the project.
     description: "A powerful CLI for scaffolding modern web applications."
     # The license of the project.
     license: "MIT"
     # A list of test commands to run.
     test: |
-      system "#{bin}/open-workbench-cli --version"
+      system "#{bin}/om --version"
 
 # Scoop bucket configuration
 scoops:
   - # Name of the manifest
-    name: open-workbench-cli
+    name: om
     # The GitHub repository to push the manifest to
     repository:
       owner: jashkahar
@@ -101,7 +101,7 @@ scoops:
       name: goreleaserbot
       email: bot@goreleaser.com
     # The homepage of the project.
-    homepage: "https://github.com/jashkahar/open-workbench-cli"
+    homepage: "https://github.com/jashkahar/open-workbench-platform"
     # The description of the project.
     description: "A powerful CLI for scaffolding modern web applications."
     # The license of the project.

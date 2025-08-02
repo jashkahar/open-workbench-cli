@@ -16,8 +16,8 @@ This guide provides comprehensive information for developers who want to contrib
 #### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/jashkahar/open-workbench-cli.git
-cd open-workbench-cli
+git clone https://github.com/jashkahar/open-workbench-platform.git
+cd open-workbench-platform
 ```
 
 #### 2. Install Dependencies
@@ -30,13 +30,13 @@ go mod tidy
 
 ```bash
 # Build the project
-go build -o open-workbench-cli main.go
+go build -o om main.go
 
 # Run tests
 go test ./...
 
 # Run the CLI
-./open-workbench-cli --help
+./om --help
 ```
 
 ## 🏗️ Project Structure
@@ -44,7 +44,7 @@ go test ./...
 ### Core Files
 
 ```
-open-workbench-cli/
+om/
 ├── main.go                   # Application entry point
 ├── tui.go                    # Terminal User Interface
 ├── types.go                  # Shared type definitions
@@ -114,12 +114,12 @@ go test -run TestFunctionName
 
 ```bash
 # Build for current platform
-go build -o open-workbench-cli main.go
+go build -o om main.go
 
 # Build for multiple platforms
-GOOS=windows GOARCH=amd64 go build -o open-workbench-cli.exe main.go
-GOOS=darwin GOARCH=amd64 go build -o open-workbench-cli-darwin main.go
-GOOS=linux GOARCH=amd64 go build -o open-workbench-cli-linux main.go
+GOOS=windows GOARCH=amd64 go build -o om.exe main.go
+GOOS=darwin GOARCH=amd64 go build -o om-darwin main.go
+GOOS=linux GOARCH=amd64 go build -o om-linux main.go
 ```
 
 ### 2. Testing Your Changes

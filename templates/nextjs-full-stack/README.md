@@ -1,6 +1,6 @@
 # {{.ProjectName}}
 
-This project was scaffolded by the [Open Workbench CLI](https://github.com/your-username/open-workbench-cli).
+This project was scaffolded by the [Open Workbench Platform](https://github.com/your-username/open-workbench-platform).
 
 ## Owner
 
