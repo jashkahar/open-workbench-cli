@@ -78,3 +78,6 @@ node_modules/
 # Temporary folders
 tmp/
 temp/ 
+
+# docs
+/docs/STRATEGIC_ROADMAP.md

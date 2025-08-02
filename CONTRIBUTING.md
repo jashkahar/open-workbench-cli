@@ -32,7 +32,7 @@ This project and its participants are governed by the [Contributor Covenant Code
 
 ### Before You Start
 
-- Check existing [Issues](https://github.com/jashkahar/open-workbench-cli/issues) to avoid duplicates
+- Check existing [Issues](https://github.com/jashkahar/open-workbench-platform/issues) to avoid duplicates
 - For new features, create an issue first to discuss the approach
 - For bug fixes, please include steps to reproduce the issue
 
@@ -51,14 +51,14 @@ This project and its participants are governed by the [Contributor Covenant Code
 2. **Clone your fork locally**:
 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/open-workbench-cli.git
-   cd open-workbench-cli
+   git clone https://github.com/YOUR_USERNAME/open-workbench-platform.git
+   cd open-workbench-platform
    ```
 
 3. **Add the upstream remote**:
 
    ```bash
-   git remote add upstream https://github.com/jashkahar/open-workbench-cli.git
+   git remote add upstream https://github.com/jashkahar/open-workbench-platform.git
    ```
 
 4. **Install dependencies**:
@@ -70,12 +70,12 @@ This project and its participants are governed by the [Contributor Covenant Code
 5. **Build the project**:
 
    ```bash
-   go build -o open-workbench-cli main.go
+   go build -o om main.go
    ```
 
 6. **Test your build**:
    ```bash
-   ./open-workbench-cli
+   ./om
    ```
 
 ### Development Workflow
@@ -105,7 +105,7 @@ This project and its participants are governed by the [Contributor Covenant Code
 ## Project Structure
 
 ```
-open-workbench-cli/
+om/
 ├── main.go                   # Main CLI application entry point
 ├── tui.go                    # Terminal User Interface implementation
 ├── go.mod                    # Go module dependencies
@@ -244,13 +244,13 @@ Examples:
 
 1. **Build the CLI**:
    ```bash
-   go build -o open-workbench-cli main.go
+   go build -o om main.go
 ````
 
 2. **Test each template**:
 
    ```bash
-   ./open-workbench-cli
+   ./om
    # Follow prompts and verify the generated project
    ```
 

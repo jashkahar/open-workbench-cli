@@ -72,7 +72,7 @@ func NewTemplateNotFoundError(templateName string, originalErr error) *TemplateE
 
 	suggestions := "\n\nPossible solutions:\n"
 	suggestions += "• Check that the template name is spelled correctly\n"
-	suggestions += "• Run 'open-workbench-cli ui' to see available templates\n"
+	suggestions += "• Run 'om ui' to see available templates\n"
 	suggestions += "• Ensure the template is properly installed\n"
 
 	return &TemplateError{

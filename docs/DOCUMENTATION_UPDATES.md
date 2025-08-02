@@ -92,7 +92,7 @@ This document summarizes all the documentation updates made to reflect the curre
 **Interactive Mode (Recommended):**
 
 ```bash
-open-workbench-cli
+om
 ```
 
 - Template selection from all available templates
@@ -102,7 +102,7 @@ open-workbench-cli
 **CLI Mode (Non-Interactive):**
 
 ```bash
-open-workbench-cli create <template> <project-name> --owner="Your Name" [flags]
+om create <template> <project-name> --owner="Your Name" [flags]
 ```
 
 - Non-interactive project creation
@@ -144,11 +144,11 @@ All error messages now include help guidance:
 ```
 Unknown command: invalid-command
 Available commands:
-  open-workbench-cli          # Interactive mode
-  open-workbench-cli create   # CLI mode with flags
+  om          # Interactive mode
+  om create   # CLI mode with flags
 
-Run 'open-workbench-cli create --help' for detailed CLI usage
-Run 'open-workbench-cli' for interactive mode
+Run 'om create --help' for detailed CLI usage
+Run 'om' for interactive mode
 ```
 
 ## 📋 Templates Updated
