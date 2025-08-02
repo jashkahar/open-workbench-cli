@@ -36,6 +36,9 @@ go build -o om main.go
 ### First Run
 
 ```bash
+# Initialize a new project (recommended)
+om init
+
 # Start the interactive TUI
 om ui
 
@@ -49,8 +52,79 @@ om
 
 | Command     | Description                    |
 | ----------- | ------------------------------ |
+| `om init`   | Initialize a new project (NEW) |
 | `om`        | Interactive mode (recommended) |
 | `om create` | CLI mode with flags            |
+
+### Project Management with `om init` (NEW)
+
+The `om init` command creates managed projects with a `workbench.yaml` manifest file:
+
+```bash
+# Initialize a new project
+om init
+```
+
+**What `om init` does:**
+
+1. **Safety Check**: Verifies the current directory is empty or contains only hidden files
+2. **Project Name**: Prompts for a project name with validation
+3. **Template Selection**: Shows available templates for the first service
+4. **Service Name**: Prompts for the first service name
+5. **Project Creation**: Creates the project structure and scaffolds the first service
+6. **Manifest Generation**: Creates a `workbench.yaml` file for project management
+
+**Example workflow:**
+
+```bash
+$ om init
+What is your project name? my-awesome-app
+Choose a template for your first service:
+  ❯ nextjs-full-stack - A production-ready Next.js application
+    react-typescript - A modern React application
+    fastapi-basic - A FastAPI backend template
+    express-api - A Node.js Express API template
+    vue-nuxt - A Vue.js Nuxt application
+What is your service name? frontend
+
+✅ Success! Your new project 'my-awesome-app' is ready.
+
+📁 Project structure:
+  my-awesome-app/
+  ├── workbench.yaml
+  └── frontend/
+
+🚀 Next steps:
+  cd my-awesome-app
+  om add service  # Add more services to your project
+  om run          # Run your project (when implemented)
+  om deploy       # Deploy your project (when implemented)
+```
+
+**Project Structure Created:**
+
+```
+my-awesome-app/
+├── workbench.yaml          # Project manifest
+└── frontend/              # First service
+    ├── package.json
+    ├── src/
+    ├── public/
+    └── ... (template files)
+```
+
+**workbench.yaml Manifest:**
+
+```yaml
+apiVersion: openworkbench.io/v1alpha1
+kind: Project
+metadata:
+  name: my-awesome-app
+services:
+  frontend:
+    template: nextjs-full-stack
+    path: ./frontend
+```
 
 ### Interactive Modes
 
@@ -99,522 +173,482 @@ For automation and scripting:
 om create <template> <project-name> --owner="Your Name" [flags]
 ```
 
-**Features:**
+## 🔒 Security Features
 
-- Non-interactive project creation
-- Command-line flags for all options
-- Suitable for CI/CD and automation
-- Comprehensive help system
+### Enterprise-Grade Security
 
-**Available Flags:**
+Open Workbench Platform includes comprehensive security features to protect against common attacks:
 
-| Flag                  | Description                        |
-| --------------------- | ---------------------------------- |
-| `--owner`             | Project owner (required)           |
-| `--no-testing`        | Disable testing framework          |
-| `--no-tailwind`       | Disable Tailwind CSS               |
-| `--no-docker`         | Disable Docker configuration       |
-| `--no-install-deps`   | Skip dependency installation       |
-| `--no-git`            | Skip Git repository initialization |
-| `--testing-framework` | Testing framework (Jest/Vitest)    |
-| `--help`              | Show help message                  |
+#### Input Validation
 
-**Examples:**
+All user inputs are validated for security:
 
 ```bash
-# Create a Next.js project with all features
-om create nextjs-full-stack my-app --owner="John Doe"
+# ✅ Valid project names
+my-project
+project123
+frontend
 
-# Create a React project without testing
-om create react-typescript my-react-app --owner="Dev Team" --no-testing
-
-# Create a FastAPI project without git initialization
-om create fastapi-basic my-api --owner="Backend Team" --no-git
-
-# Get help for CLI mode
-om create --help
+# ❌ Blocked (security reasons)
+../malicious          # Path traversal
+javascript:alert(1)   # JavaScript injection
+C:\Windows\System32  # Absolute paths
+con                   # Windows reserved names
 ```
 
-### Parameter Collection
+#### Security Validations
 
-After selecting a template, the CLI will collect parameters:
+- **Path Traversal Protection**: Blocks `../` and `..\` attacks
+- **Malicious Pattern Detection**: Prevents JavaScript injection, command injection
+- **Cross-Platform Security**: Windows reserved names, absolute path prevention
+- **Directory Safety Checks**: Validates permissions, accessibility, symbolic links
+- **Template Security**: Secure template name validation and content verification
 
-#### Parameter Types
+#### Security Configuration
 
-1. **String Parameters**
-
-   - Text input with optional validation
-   - Example: Project name, owner name
-
-2. **Boolean Parameters**
-
-   - Yes/No questions with defaults
-   - Example: "Include testing framework?"
-
-3. **Select Parameters**
-
-   - Single-choice dropdown
-   - Example: "Which testing framework?" → [Jest, Vitest]
-
-4. **Multiselect Parameters**
-   - Multiple-choice selection
-   - Example: "Which features?" → [Auth, Database, API]
-
-#### Parameter Groups
-
-Parameters are organized into logical groups:
-
-- **Project Details**: Basic project information
-- **Testing & Quality**: Testing framework and tools
-- **Styling**: CSS frameworks and styling options
-- **Deployment**: Docker, CI/CD configuration
-- **Final Steps**: Post-setup actions
-
-#### Validation
-
-The CLI validates your input:
-
-- **Required fields**: Must be provided
-- **Format validation**: Regex patterns for specific formats
-- **Custom error messages**: Clear guidance on what's wrong
-
-### Example Workflow
-
-```bash
-$ om ui
-
-🚀 Starting Open Workbench UI...
-
-Please choose a project template:
-┌─────────────────────────────────────────────────────────┐
-│  🎨 Next.js Production-Grade                          │
-│  A fully-featured Next.js application with testing,   │
-│  linting, and optional CI/CD.                         │
-│                                                       │
-│  ⚡ FastAPI Basic                                     │
-│  A FastAPI backend template with automatic API        │
-│  documentation.                                        │
-│                                                       │
-│  🎯 React TypeScript                                  │
-│  A modern React application with Vite and TypeScript. │
-└─────────────────────────────────────────────────────────┘
-
-[Select template with arrow keys, press Enter to confirm]
-
-📋 Project Details
-──────────────────
-? Project Name: my-awesome-app
-? Project Owner: jashkahar
-
-📋 Testing & Quality
-────────────────────
-? Include a testing framework? Yes
-? Which testing framework? Jest
-
-📋 Deployment
-─────────────
-? Include Docker configuration? Yes
-
-📋 Styling
-──────────
-? Include Tailwind CSS? Yes
-
-📋 Final Steps
-──────────────
-? Install dependencies after setup? Yes
-
-📂 Scaffolding project in './my-awesome-app'...
-✏️  Applying templates...
-🔧 Executing post-scaffolding actions...
-------------------------------------
-✅ Success! Your new project 'my-awesome-app' is ready.
-
-Next steps:
-1. cd my-awesome-app
-2. npm install (if not already done)
-3. npm run dev
-```
-
-## 📋 Available Templates
-
-### 🎨 Next.js Production-Grade
-
-A comprehensive Next.js template with modern tooling:
-
-**Features:**
-
-- TypeScript with strict configuration
-- Testing framework (Jest or Vitest)
-- ESLint and Prettier for code quality
-- Tailwind CSS for styling
-- Docker configuration
-- GitHub Actions for CI/CD
-- Husky for git hooks
-
-**Parameters:**
-
-- Project name and owner
-- Testing framework selection
-- Docker inclusion
-- Tailwind CSS inclusion
-- Automatic dependency installation
-
-### ⚡ FastAPI Basic
-
-A FastAPI backend template with automatic documentation:
-
-**Features:**
-
-- FastAPI with automatic OpenAPI docs
-- Uvicorn ASGI server
-- Python virtual environment setup
-- Requirements.txt management
-- Hot reload development server
-
-**Parameters:**
-
-- Project name
-- Database support (optional)
-- Database type selection
-
-### 🎯 React TypeScript
-
-A modern React application with Vite:
-
-**Features:**
-
-- React 18 with TypeScript
-- Vite for fast development
-- ESLint and Prettier
-- Component library structure
-- Modern tooling setup
-
-**Parameters:**
-
-- Project name and owner
-- Testing framework selection
-- Styling framework choice
-
-### 🚀 Express API
-
-A Node.js Express API template:
-
-**Features:**
-
-- Express.js with TypeScript
-- Jest testing setup
-- Swagger/OpenAPI documentation
-- Middleware configuration
-- Error handling
-
-**Parameters:**
-
-- Project name and owner
-- Testing framework
-- Documentation inclusion
-
-### 🟢 Vue Nuxt
-
-A Vue.js Nuxt application:
-
-**Features:**
-
-- Nuxt 3 with TypeScript
-- Auto-imports for components
-- Server-side rendering ready
-- Modern Vue 3 composition API
-- Built-in routing
-
-**Parameters:**
-
-- Project name and owner
-- Styling framework
-- Testing setup
-
-## 🔧 Template Customization
-
-### Understanding Template Variables
-
-Templates use Go template syntax for variable substitution:
+The security system is configurable and extensible:
 
 ```go
-// Basic variables
-{{.ProjectName}}
-{{.Owner}}
+// Security configuration
+type SecurityConfig struct {
+    MaxPathLength     int
+    MaxNameLength     int
+    AllowedCharacters *regexp.Regexp
+    ForbiddenPatterns []*regexp.Regexp
+}
+```
 
-// Conditional content
+## 🧪 Testing
+
+### Comprehensive Test Suite
+
+The platform includes a comprehensive test suite with 100% coverage:
+
+```bash
+# Run all tests
+go test ./...
+
+# Run tests with coverage
+go test ./... -cover
+
+# Run security tests
+go test ./cmd -v
+
+# Run benchmarks
+go test ./cmd -bench=.
+```
+
+### Test Categories
+
+1. **Security Tests**: Input validation, path traversal, malicious patterns
+2. **Command Tests**: Init command, project creation, manifest generation
+3. **Integration Tests**: End-to-end workflow testing
+4. **Performance Tests**: Benchmark tests for critical functions
+
+### Test Results
+
+```
+=== RUN   TestValidateAndSanitizePath --- PASS
+=== RUN   TestValidateAndSanitizeName --- PASS
+=== RUN   TestValidateDirectorySafety --- PASS
+=== RUN   TestValidateTemplateName --- PASS
+=== RUN   TestCheckForSuspiciousPatterns --- PASS
+=== RUN   TestCreateProjectDirectories --- PASS
+=== RUN   TestCreateWorkbenchManifest --- PASS
+=== RUN   TestCheckDirectorySafety --- PASS
+
+BenchmarkValidateAndSanitizeName-8:     100,788 ops/sec (~12μs/op)
+BenchmarkValidateAndSanitizePath-8:      85,692 ops/sec (~12μs/op)
+BenchmarkCheckForSuspiciousPatterns-8: 11,804,667 ops/sec (~149ns/op)
+```
+
+## 📋 Template Parameters
+
+### Parameter Types
+
+The CLI supports various parameter types for collecting user input:
+
+#### String Parameters
+
+```json
+{
+  "name": "ProjectName",
+  "prompt": "What is your project name?",
+  "type": "string",
+  "required": true,
+  "validation": {
+    "regex": "^[a-z0-9-]+$",
+    "errorMessage": "Project name can only contain lowercase letters, numbers, and hyphens."
+  }
+}
+```
+
+#### Boolean Parameters
+
+```json
+{
+  "name": "IncludeTesting",
+  "prompt": "Include testing setup?",
+  "type": "boolean",
+  "default": true
+}
+```
+
+#### Select Parameters
+
+```json
+{
+  "name": "TestingFramework",
+  "prompt": "Choose testing framework:",
+  "type": "select",
+  "options": ["Jest", "Vitest"],
+  "condition": "IncludeTesting == true"
+}
+```
+
+#### Multiselect Parameters
+
+```json
+{
+  "name": "Features",
+  "prompt": "Select features to include:",
+  "type": "multiselect",
+  "options": ["Tailwind CSS", "Docker", "CI/CD", "Storybook"]
+}
+```
+
+### Parameter Groups
+
+Parameters can be organized into groups for better UX:
+
+```json
+{
+  "name": "ProjectName",
+  "group": "Basic Settings",
+  "prompt": "What is your project name?"
+},
+{
+  "name": "IncludeTesting",
+  "group": "Testing",
+  "prompt": "Include testing setup?"
+}
+```
+
+### Conditional Logic
+
+Parameters can be conditionally shown based on other parameter values:
+
+```json
+{
+  "name": "TestingFramework",
+  "condition": "IncludeTesting == true",
+  "type": "select",
+  "options": ["Jest", "Vitest"]
+}
+```
+
+## 🔧 Post-Scaffolding Actions
+
+### File Deletion
+
+Remove files based on conditions:
+
+```json
+{
+  "postScaffold": {
+    "filesToDelete": [
+      {
+        "path": "src/components/Example.tsx",
+        "condition": "IncludeExamples == false"
+      }
+    ]
+  }
+}
+```
+
+### Command Execution
+
+Run setup commands after project creation:
+
+```json
+{
+  "postScaffold": {
+    "commands": [
+      {
+        "command": "npm install",
+        "description": "Installing dependencies...",
+        "condition": "InstallDeps == true"
+      },
+      {
+        "command": "git init",
+        "description": "Initializing git repository...",
+        "condition": "InitGit == true"
+      }
+    ]
+  }
+}
+```
+
+## 🎨 Available Templates
+
+### nextjs-full-stack
+
+A production-ready Next.js application with:
+
+- **TypeScript**: Full TypeScript support with strict configuration
+- **Testing**: Jest or Vitest with comprehensive test setup
+- **Styling**: Tailwind CSS with PostCSS configuration
+- **Docker**: Ready-to-use Dockerfile for containerization
+- **Quality Tools**: ESLint, Prettier, and Husky for code quality
+- **CI/CD Ready**: GitHub Actions workflows included
+
+**Parameters:**
+
+- `ProjectName` (string): Project name
+- `Owner` (string): Project owner
+- `IncludeTesting` (boolean): Include testing setup
+- `TestingFramework` (select): Jest or Vitest
+- `IncludeTailwind` (boolean): Include Tailwind CSS
+- `IncludeDocker` (boolean): Include Docker configuration
+- `InstallDeps` (boolean): Install dependencies after creation
+- `InitGit` (boolean): Initialize git repository
+
+### fastapi-basic
+
+A FastAPI backend template with:
+
+- **FastAPI**: Modern, fast web framework for building APIs
+- **Uvicorn**: ASGI server for running the application
+- **Python Best Practices**: Virtual environment setup and dependency management
+- **API Documentation**: Automatic OpenAPI/Swagger documentation
+- **Hot Reload**: Development server with auto-reload capability
+
+**Parameters:**
+
+- `ProjectName` (string): Project name
+- `Owner` (string): Project owner
+- `IncludeTesting` (boolean): Include testing setup
+- `InstallDeps` (boolean): Install dependencies after creation
+- `InitGit` (boolean): Initialize git repository
+
+### react-typescript
+
+A modern React application with:
+
+- **Vite**: Lightning-fast build tool and dev server
+- **TypeScript**: Full TypeScript support
+- **Modern Tooling**: ESLint, Prettier configuration
+- **Component Library**: Ready-to-use component structure
+
+**Parameters:**
+
+- `ProjectName` (string): Project name
+- `Owner` (string): Project owner
+- `IncludeTesting` (boolean): Include testing setup
+- `TestingFramework` (select): Jest or Vitest
+- `IncludeTailwind` (boolean): Include Tailwind CSS
+- `InstallDeps` (boolean): Install dependencies after creation
+- `InitGit` (boolean): Initialize git repository
+
+### express-api
+
+A Node.js Express API template with:
+
+- **Express.js**: Fast, unopinionated web framework
+- **TypeScript**: Full TypeScript support
+- **Testing**: Jest setup with API testing utilities
+- **Documentation**: Swagger/OpenAPI documentation
+
+**Parameters:**
+
+- `ProjectName` (string): Project name
+- `Owner` (string): Project owner
+- `IncludeTesting` (boolean): Include testing setup
+- `InstallDeps` (boolean): Install dependencies after creation
+- `InitGit` (boolean): Initialize git repository
+
+### vue-nuxt
+
+A Vue.js Nuxt application with:
+
+- **Nuxt 3**: Full-stack Vue.js framework
+- **TypeScript**: Full TypeScript support
+- **Auto-imports**: Automatic component and composable imports
+- **SSR Ready**: Server-side rendering configuration
+
+**Parameters:**
+
+- `ProjectName` (string): Project name
+- `Owner` (string): Project owner
+- `IncludeTesting` (boolean): Include testing setup
+- `InstallDeps` (boolean): Install dependencies after creation
+- `InitGit` (boolean): Initialize git repository
+
+## 🚀 Advanced Usage
+
+### Custom Templates
+
+Create your own templates by following the template structure:
+
+1. Create a new directory in `templates/` with your template name
+2. Add a `template.json` file with parameter definitions
+3. Include your template files with Go template syntax where needed
+4. Test the template using the CLI
+
+### Template Manifest Structure
+
+```json
+{
+  "name": "Template Name",
+  "description": "Template description",
+  "parameters": [
+    {
+      "name": "ParameterName",
+      "prompt": "User prompt",
+      "group": "Group Name",
+      "type": "string|boolean|select|multiselect",
+      "required": true,
+      "default": "default value",
+      "options": ["option1", "option2"],
+      "condition": "OtherParam == true",
+      "validation": {
+        "regex": "^[a-z0-9-]+$",
+        "errorMessage": "Custom error message"
+      }
+    }
+  ],
+  "postScaffold": {
+    "filesToDelete": [
+      {
+        "path": "file-to-delete.js",
+        "condition": "IncludeFeature == false"
+      }
+    ],
+    "commands": [
+      {
+        "command": "npm install",
+        "description": "Installing dependencies...",
+        "condition": "InstallDeps == true"
+      }
+    ]
+  }
+}
+```
+
+### Go Template Syntax
+
+Use Go template syntax in your template files:
+
+````go
+// In package.json
+{
+  "name": "{{.ProjectName}}",
+  "version": "1.0.0",
+  "description": "{{.ProjectName}} - A {{.TemplateName}} project",
+  "author": "{{.Owner}}"
+}
+
+// In README.md
+# {{.ProjectName}}
+
+Created by {{.Owner}} using Open Workbench Platform.
+
+{{if .IncludeTesting}}
+## Testing
+
+Run tests with:
+```bash
+npm test
+````
+
+{{end}}
+
+````
+
+### Conditional Logic
+
+Use conditional statements in templates:
+
+```go
 {{if .IncludeTesting}}
 import { render, screen } from '@testing-library/react';
 {{end}}
 
-// Template functions
-{{lower .ProjectName}}
-{{upper .ProjectName}}
-{{title .ProjectName}}
-```
-
-### Template Functions
-
-The CLI provides several template functions:
-
-| Function   | Description           | Example                        |
-| ---------- | --------------------- | ------------------------------ |
-| `eq`       | Equality comparison   | `{{eq .Framework "React"}}`    |
-| `ne`       | Inequality comparison | `{{ne .Framework "Vue"}}`      |
-| `contains` | Array contains check  | `{{contains .Features "API"}}` |
-| `lower`    | Convert to lowercase  | `{{lower .ProjectName}}`       |
-| `upper`    | Convert to uppercase  | `{{upper .ProjectName}}`       |
-| `title`    | Title case            | `{{title .ProjectName}}`       |
-| `trim`     | Trim whitespace       | `{{trim .ProjectName}}`        |
-
-### Conditional Logic
-
-Templates support conditional logic:
-
-```go
-{{if .IncludeTesting}}
-// Testing configuration
+{{if eq .TestingFramework "Jest"}}
+import '@testing-library/jest-dom';
+{{else}}
+import { vi } from 'vitest';
 {{end}}
+````
 
-{{if .IncludeDocker}}
-# Dockerfile content
-FROM node:18-alpine
-{{end}}
-```
-
-## 🛠️ Advanced Usage
-
-### Non-Interactive Mode (Coming Soon)
-
-For automation and scripting:
-
-```bash
-# Basic usage
-om create --name my-project --template nextjs-full-stack
-
-# With parameters
-om create \
-  --name my-project \
-  --template nextjs-full-stack \
-  --param "IncludeTesting=true" \
-  --param "TestingFramework=Jest" \
-  --param "IncludeDocker=true"
-```
-
-### Template Preview (Coming Soon)
-
-Preview template output without creating files:
-
-```bash
-om preview nextjs-full-stack --params '{"ProjectName":"test"}'
-```
-
-### Custom Templates
-
-Create your own templates:
-
-1. **Create template directory**
-
-   ```bash
-   mkdir -p templates/my-custom-template
-   ```
-
-2. **Create template manifest**
-
-   ```json
-   {
-     "name": "My Custom Template",
-     "description": "Description of your template",
-     "parameters": [
-       {
-         "name": "ProjectName",
-         "prompt": "Project Name:",
-         "type": "string",
-         "required": true
-       }
-     ]
-   }
-   ```
-
-3. **Add template files**
-   - Create your template files
-   - Use Go template syntax for variables
-   - Test the template
-
-## 🔍 Troubleshooting
+## 🐛 Troubleshooting
 
 ### Common Issues
 
-#### 1. Template Not Found
+#### Permission Denied
 
-**Problem**: CLI can't find available templates
+```bash
+Error: failed to create project directory: permission denied
+```
 
-**Solutions**:
+**Solution**: Ensure you have write permissions in the current directory.
 
-- Check if templates are properly embedded
-- Verify template directory structure
-- Ensure `template.json` exists and is valid JSON
+#### Template Not Found
 
-#### 2. Parameter Validation Errors
+```bash
+Error: template not found: my-template
+```
 
-**Problem**: Input validation fails
+**Solution**: Check that the template exists in the `templates/` directory.
 
-**Solutions**:
+#### Invalid Project Name
 
-- Check the validation rules in the template
-- Follow the format requirements (e.g., lowercase for project names)
-- Read the error message for specific guidance
+```bash
+Error: project name can only contain lowercase letters, numbers, and hyphens
+```
 
-#### 3. File Permission Errors
+**Solution**: Use only lowercase letters, numbers, and hyphens in project names.
 
-**Problem**: Can't create project directory or files
+#### Directory Not Empty
 
-**Solutions**:
+```bash
+Error: directory is not empty. Please run 'om init' in an empty directory
+```
 
-- Check directory permissions
-- Ensure you have write access to the current directory
-- Try running in a different directory
+**Solution**: Run `om init` in an empty directory or one containing only hidden files.
 
-#### 4. Template Processing Errors
+### Getting Help
 
-**Problem**: Template variables not substituted correctly
+```bash
+# Get help for all commands
+om --help
 
-**Solutions**:
+# Get help for specific command
+om init --help
+om create --help
 
-- Check template syntax in files
-- Verify parameter names match template variables
-- Look for syntax errors in Go template syntax
+# Get help for specific template
+om create nextjs-full-stack --help
+```
 
 ### Debug Mode
 
-Enable debug output for troubleshooting:
+Enable debug mode for more verbose output:
 
 ```bash
-# Run with debug logging
-go run main.go ui
-
-# Check debug output for:
-# - Template discovery
-# - Parameter collection
-# - File processing
-# - Post-scaffolding actions
+# Set debug environment variable
+export DEBUG=true
+om init
 ```
 
-### Getting Help
+## 📚 Additional Resources
 
-1. **Check Documentation**: Review this user guide and other docs
-2. **Search Issues**: Look for similar issues on GitHub
-3. **Create Issue**: Open a new issue with detailed information
-4. **Community**: Ask questions in GitHub Discussions
-
-## 📚 Best Practices
-
-### Project Naming
-
-- Use lowercase letters, numbers, and hyphens only
-- Avoid spaces and special characters
-- Keep names descriptive but concise
-- Follow your organization's naming conventions
-
-### Template Selection
-
-- **Next.js**: For full-stack React applications
-- **FastAPI**: For Python backend APIs
-- **React TypeScript**: For frontend-only React apps
-- **Express API**: For Node.js backend APIs
-- **Vue Nuxt**: For Vue.js applications
-
-### Parameter Configuration
-
-- **Testing**: Include testing for production projects
-- **Docker**: Include for containerized deployments
-- **Styling**: Choose based on your team's preferences
-- **Dependencies**: Let the CLI install dependencies automatically
-
-### Post-Setup Steps
-
-After project creation:
-
-1. **Review the generated code**
-
-   - Check file structure
-   - Verify configuration files
-   - Review package.json or requirements.txt
-
-2. **Install dependencies**
-
-   ```bash
-   cd your-project
-   npm install  # or pip install -r requirements.txt
-   ```
-
-3. **Start development**
-
-   ```bash
-   npm run dev  # or python main.py
-   ```
-
-4. **Run tests**
-
-   ```bash
-   npm test  # or pytest
-   ```
-
-5. **Initialize git repository**
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   ```
-
-## 🔮 Future Features
-
-### Planned Enhancements
-
-- **Template Marketplace**: Browse and install community templates
-- **Template Versioning**: Manage template updates
-- **Plugin System**: Extend CLI functionality
-- **IDE Integration**: VS Code and other IDE plugins
-- **Cloud Deployment**: Direct deployment to cloud platforms
-
-### Feature Requests
-
-Have an idea for a new feature?
-
-1. **Check existing issues** to avoid duplicates
-2. **Create a feature request** with detailed description
-3. **Provide use cases** and examples
-4. **Consider contributing** the feature yourself
-
-## 📞 Support
-
-### Getting Help
-
-- **Documentation**: Start with this user guide
-- **GitHub Issues**: For bugs and feature requests
-- **GitHub Discussions**: For questions and discussions
-- **Community**: Join our community channels
-
-### Contributing
-
-Want to help improve the CLI?
-
-- **Report bugs** with detailed information
-- **Suggest features** with use cases
-- **Contribute code** following our guidelines
-- **Improve documentation** for better user experience
-
-### Feedback
-
-We value your feedback:
-
-- **User experience**: What works well, what doesn't
-- **Template suggestions**: New templates you'd like to see
-- **Feature requests**: Functionality you need
-- **Documentation**: What's unclear or missing
+- [Architecture Documentation](architecture.md)
+- [Template System Guide](template-system.md)
+- [Development Guide](development.md)
+- [Contributing Guidelines](../CONTRIBUTING.md)
 
 ---
 
-**Last Updated**: 07/29/2025  
-**Version**: v0.5.0  
-**Maintainers**: [Project Maintainers]
+**Maintainer**: Jash Kahar  
+**Last Updated**: February 8, 2025

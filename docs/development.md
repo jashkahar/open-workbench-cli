@@ -37,6 +37,9 @@ go test ./...
 
 # Run the CLI
 ./om --help
+
+# Test the new init command
+./om init --help
 ```
 
 ## 🏗️ Project Structure
@@ -45,19 +48,25 @@ go test ./...
 
 ```
 om/
-├── main.go                   # Application entry point
+├── main.go                   # Application entry point with embedded FS
 ├── tui.go                    # Terminal User Interface
-├── types.go                  # Shared type definitions
-├── go.mod                    # Go module dependencies
-├── go.sum                    # Dependency checksums
+├── cmd/                      # Command implementations
+│   ├── root.go              # Root command setup with Cobra
+│   ├── init.go              # om init command implementation
+│   ├── types.go             # YAML manifest type definitions
+│   ├── security.go          # Security utilities and validation
+│   ├── security_test.go     # Security tests (100% coverage)
+│   └── init_test.go         # Init command tests
 ├── internal/
 │   ├── templating/           # Dynamic templating system
 │   │   ├── discovery.go      # Template discovery
 │   │   ├── parameters.go     # Parameter processing
 │   │   └── processor.go      # Template processing
 │   └── template/             # Legacy system (deprecated)
-├── templates/                # Template directory
+├── templates/                # Template directory (embedded)
 ├── docs/                     # Documentation
+├── go.mod                    # Go module dependencies
+├── go.sum                    # Dependency checksums
 ├── .github/                  # GitHub workflows
 ├── .goreleaser.yml          # Release configuration
 └── CONTRIBUTING.md          # Contribution guidelines
@@ -65,11 +74,18 @@ om/
 
 ### Key Components
 
+#### Command System (`cmd/`)
+
+- **Root Command** (`cmd/root.go`): Main CLI setup with Cobra framework
+- **Init Command** (`cmd/init.go`): Project initialization with `workbench.yaml` manifests
+- **Security** (`cmd/security.go`): Comprehensive security utilities and validation
+- **Types** (`cmd/types.go`): YAML manifest type definitions
+
 #### Main Application (`main.go`)
 
-- Entry point and command-line argument parsing
-- Orchestrates different execution modes
-- Coordinates the scaffolding process
+- Entry point with embedded filesystem
+- Routes to command system
+- Handles application lifecycle
 
 #### Terminal UI (`tui.go`)
 
@@ -83,6 +99,13 @@ om/
 - **Parameters**: Parameter collection and validation
 - **Processor**: Template processing and file operations
 
+#### Security System (`cmd/security.go`)
+
+- **Input Validation**: Comprehensive validation for all inputs
+- **Path Security**: Path traversal protection and sanitization
+- **Malicious Pattern Detection**: JavaScript injection, command injection prevention
+- **Cross-Platform Security**: Windows reserved names, absolute path prevention
+
 ## 🔧 Development Workflow
 
 ### 1. Making Changes
@@ -93,455 +116,563 @@ om/
 - Use `gofmt` for code formatting
 - Write clear, descriptive comments
 - Use meaningful variable and function names
+- **Security First**: Always validate user inputs
+- **Test Coverage**: Aim for 100% test coverage
 
-#### Testing
+#### Security Guidelines
+
+When making changes, always consider security:
+
+```go
+// ✅ Good: Validate all user inputs
+func processUserInput(input string) error {
+    sanitized, err := ValidateAndSanitizeName(input, nil)
+    if err != nil {
+        return fmt.Errorf("invalid input: %w", err)
+    }
+    // Process sanitized input...
+}
+
+// ❌ Bad: Direct use of user input
+func processUserInput(input string) error {
+    // Direct use without validation
+    return os.WriteFile(input, data, 0644)
+}
+```
+
+#### Testing Requirements
+
+**100% Test Coverage Required** for:
+
+- Security functions
+- Command functions
+- Core logic functions
 
 ```bash
 # Run all tests
 go test ./...
 
 # Run tests with coverage
-go test -cover ./...
+go test ./... -cover
 
-# Run tests with verbose output
-go test -v ./...
+# Run security tests
+go test ./cmd -v
 
-# Run specific test
-go test -run TestFunctionName
+# Run benchmarks
+go test ./cmd -bench=.
 ```
 
-#### Building
+### 2. Adding New Commands
 
-```bash
-# Build for current platform
-go build -o om main.go
+#### Command Structure
 
-# Build for multiple platforms
-GOOS=windows GOARCH=amd64 go build -o om.exe main.go
-GOOS=darwin GOARCH=amd64 go build -o om-darwin main.go
-GOOS=linux GOARCH=amd64 go build -o om-linux main.go
+```go
+// cmd/newcommand.go
+package cmd
+
+import (
+    "github.com/spf13/cobra"
+)
+
+var newCommand = &cobra.Command{
+    Use:   "newcommand",
+    Short: "Description of the new command",
+    Long: `Detailed description of the new command.
+
+    This command does something useful.
+
+    Example:
+      om newcommand --flag value`,
+    RunE: runNewCommand,
+}
+
+func runNewCommand(cmd *cobra.Command, args []string) error {
+    // Validate inputs first
+    if err := validateInputs(args); err != nil {
+        return err
+    }
+
+    // Implement command logic
+    return nil
+}
+
+func validateInputs(args []string) error {
+    // Always validate user inputs
+    for _, arg := range args {
+        if _, err := ValidateAndSanitizePath(arg, nil); err != nil {
+            return err
+        }
+    }
+    return nil
+}
 ```
 
-### 2. Testing Your Changes
+#### Registering Commands
 
-#### Manual Testing
+```go
+// In cmd/root.go
+func Execute(fs embed.FS) {
+    // ... existing setup ...
 
-```bash
-# Test interactive mode
-go run main.go
+    // Add new command
+    rootCmd.AddCommand(newCommand)
 
-# Test CLI mode
-go run main.go create --help
+    // ... rest of setup ...
+}
+```
+
+### 3. Adding Security Features
+
+#### Security Validation
+
+```go
+// Example: Adding new security validation
+func ValidateNewInput(input string) error {
+    // Check for empty input
+    if strings.TrimSpace(input) == "" {
+        return fmt.Errorf("input cannot be empty")
+    }
+
+    // Check length
+    if len(input) > 100 {
+        return fmt.Errorf("input too long (max 100 characters)")
+    }
+
+    // Check for malicious patterns
+    if err := CheckForSuspiciousPatterns(input); err != nil {
+        return err
+    }
+
+    return nil
+}
+```
+
+#### Security Tests
+
+```go
+// Example: Adding security tests
+func TestValidateNewInput(t *testing.T) {
+    tests := []struct {
+        name        string
+        input       string
+        expectError bool
+    }{
+        {"valid input", "normal-input", false},
+        {"empty input", "", true},
+        {"malicious input", "javascript:alert(1)", true},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            err := ValidateNewInput(tt.input)
+            if tt.expectError && err == nil {
+                t.Errorf("expected error but got none")
+            }
+            if !tt.expectError && err != nil {
+                t.Errorf("unexpected error: %v", err)
+            }
+        })
+    }
+}
+```
+
+### 4. Testing Guidelines
+
+#### Test Categories
+
+1. **Unit Tests**: Individual function testing
+2. **Integration Tests**: End-to-end workflow testing
+3. **Security Tests**: Security validation testing
+4. **Performance Tests**: Benchmark testing
+
+#### Test Structure
+
+```go
+// Example test structure
+func TestFunctionName(t *testing.T) {
+    tests := []struct {
+        name        string
+        input       string
+        expectError bool
+        expected    string
+    }{
+        {"valid case", "input", false, "expected"},
+        {"error case", "bad-input", true, ""},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result, err := FunctionName(tt.input)
+
+            if tt.expectError {
+                if err == nil {
+                    t.Errorf("expected error but got none")
+                }
+            } else {
+                if err != nil {
+                    t.Errorf("unexpected error: %v", err)
+                }
+                if result != tt.expected {
+                    t.Errorf("expected %s, got %s", tt.expected, result)
+                }
+            }
+        })
+    }
+}
+```
+
+#### Benchmark Tests
+
+```go
+// Example benchmark test
+func BenchmarkFunctionName(b *testing.B) {
+    input := "test-input"
+    for i := 0; i < b.N; i++ {
+        _, err := FunctionName(input)
+        if err != nil {
+            b.Fatalf("unexpected error: %v", err)
+        }
+    }
+}
+```
+
+### 5. Adding New Templates
+
+#### Template Structure
+
+```
+templates/
+├── my-new-template/
+│   ├── template.json          # Template manifest
+│   ├── package.json           # Template file
+│   ├── src/
+│   │   └── main.ts           # Template file
+│   └── README.md             # Template file
+```
+
+#### Template Manifest
+
+```json
+{
+  "name": "My New Template",
+  "description": "Description of the template",
+  "parameters": [
+    {
+      "name": "ProjectName",
+      "prompt": "What is your project name?",
+      "type": "string",
+      "required": true,
+      "validation": {
+        "regex": "^[a-z0-9-]+$",
+        "errorMessage": "Project name can only contain lowercase letters, numbers, and hyphens."
+      }
+    },
+    {
+      "name": "IncludeTesting",
+      "prompt": "Include testing setup?",
+      "type": "boolean",
+      "default": true
+    }
+  ],
+  "postScaffold": {
+    "filesToDelete": [
+      {
+        "path": "example.js",
+        "condition": "IncludeTesting == false"
+      }
+    ],
+    "commands": [
+      {
+        "command": "npm install",
+        "description": "Installing dependencies...",
+        "condition": "InstallDeps == true"
+      }
+    ]
+  }
+}
 ```
 
 #### Template Testing
 
 ```bash
-# Create a test project
-go run main.go
-# Select a template and complete the process
+# Test the new template
+go run main.go create my-new-template test-project --owner="Test User"
 
-# Verify the generated project
-cd generated-project
-# Check that files are created correctly
-# Verify template variables are substituted
-# Test that the project builds/runs
+# Verify the output
+ls test-project/
+cat test-project/package.json
 ```
 
-### 3. Debugging
+## 🔒 Security Development
 
-#### Debug Logging
+### Security Checklist
 
-The CLI includes debug logging for development:
+When contributing code, ensure:
 
-```go
-fmt.Printf("DEBUG: Selected template: '%s'\n", selectedTemplate)
-fmt.Printf("DEBUG: Template manifest loaded: %s - %s\n", templateInfo.Name, templateInfo.Description)
-fmt.Printf("DEBUG: Collected parameters: %+v\n", parameterValues)
-```
+- [ ] All user inputs are validated
+- [ ] Path traversal attacks are prevented
+- [ ] Malicious patterns are detected
+- [ ] Cross-platform security is considered
+- [ ] Security tests are included
+- [ ] Error messages don't leak sensitive information
 
-#### Common Debug Scenarios
-
-1. **Template Not Found**
-
-   - Check template directory structure
-   - Verify `template.json` exists and is valid JSON
-   - Check template name in discovery logic
-
-2. **Parameter Issues**
-
-   - Verify parameter definitions in `template.json`
-   - Check parameter validation logic
-   - Test conditional parameter visibility
-
-3. **File Processing Errors**
-   - Check file paths and permissions
-   - Verify template syntax in files
-   - Test template variable substitution
-
-### 4. Adding New Features
-
-#### Feature Development Process
-
-1. **Create a Feature Branch**
-
-   ```bash
-   git checkout -b feature/new-feature-name
-   ```
-
-2. **Implement the Feature**
-
-   - Write code following project conventions
-   - Add tests for new functionality
-   - Update documentation
-
-3. **Test Thoroughly**
-
-   - Run existing tests
-   - Add new tests for your feature
-   - Test manually with different scenarios
-
-4. **Update Documentation**
-
-   - Update relevant documentation files
-   - Add examples if applicable
-   - Update README if needed
-
-5. **Submit a Pull Request**
-   - Create a detailed PR description
-   - Include testing instructions
-   - Reference any related issues
-
-#### Adding New Templates
-
-1. **Create Template Directory**
-
-   ```bash
-   mkdir templates/new-template-name
-   ```
-
-2. **Create Template Manifest**
-
-   ```json
-   {
-     "name": "New Template",
-     "description": "Description of the template",
-     "parameters": [
-       {
-         "name": "ProjectName",
-         "prompt": "Project Name:",
-         "type": "string",
-         "required": true
-       }
-     ]
-   }
-   ```
-
-3. **Add Template Files**
-
-   - Create the actual template files
-   - Use Go template syntax for variables
-   - Test template variable substitution
-
-4. **Test the Template**
-   ```bash
-   go run main.go ui
-   # Select your new template and test the process
-   ```
-
-#### Adding New Parameter Types
-
-1. **Update Parameter Types**
-
-   - Add new type to `Parameter` struct
-   - Update validation logic in `parameters.go`
-   - Add UI handling in `main.go`
-
-2. **Update Template Processing**
-
-   - Add processing logic in `processor.go`
-   - Update template functions if needed
-
-3. **Add Tests**
-   - Test parameter validation
-   - Test template processing
-   - Test UI interaction
-
-## 🧪 Testing Strategy
-
-### Unit Tests
-
-#### Testing Template Discovery
-
-```go
-func TestDiscoverTemplates(t *testing.T) {
-    templates, err := templating.DiscoverTemplates(templatesFS)
-    if err != nil {
-        t.Fatalf("Failed to discover templates: %v", err)
-    }
-
-    if len(templates) == 0 {
-        t.Error("No templates found")
-    }
-}
-```
-
-#### Testing Parameter Processing
-
-```go
-func TestParameterValidation(t *testing.T) {
-    param := templating.Parameter{
-        Name: "ProjectName",
-        Type: "string",
-        Validation: &templating.Validation{
-            Regex: "^[a-z0-9-]+$",
-        },
-    }
-
-    processor := templating.NewParameterProcessor(&templating.TemplateManifest{})
-
-    // Test valid input
-    err := processor.ValidateParameter(param, "valid-project")
-    if err != nil {
-        t.Errorf("Valid input should not error: %v", err)
-    }
-
-    // Test invalid input
-    err = processor.ValidateParameter(param, "Invalid Project")
-    if err == nil {
-        t.Error("Invalid input should error")
-    }
-}
-```
-
-#### Testing Template Processing
-
-```go
-func TestTemplateProcessing(t *testing.T) {
-    manifest := &templating.TemplateManifest{
-        Name: "Test Template",
-        Description: "Test description",
-    }
-
-    values := map[string]interface{}{
-        "ProjectName": "test-project",
-        "Owner": "test-owner",
-    }
-
-    processor := templating.NewTemplateProcessor(manifest, values)
-
-    content := "Project: {{.ProjectName}}, Owner: {{.Owner}}"
-    expected := "Project: test-project, Owner: test-owner"
-
-    result, err := processor.ProcessTemplate(content)
-    if err != nil {
-        t.Fatalf("Failed to process template: %v", err)
-    }
-
-    if result != expected {
-        t.Errorf("Expected %s, got %s", expected, result)
-    }
-}
-```
-
-### Integration Tests
-
-#### Testing Full Workflow
-
-```go
-func TestFullScaffoldingWorkflow(t *testing.T) {
-    // Test the complete workflow from template selection to project creation
-    // This would test the integration between all components
-}
-```
-
-### Manual Testing Checklist
-
-- [ ] Interactive mode works correctly (template selection, parameter collection)
-- [ ] CLI mode works correctly (all flags, error handling, help)
-
-- [ ] Template discovery finds all templates
-- [ ] Parameter collection works for all types
-- [ ] Template processing substitutes variables correctly
-- [ ] Post-scaffolding actions execute properly
-- [ ] Optional git initialization works (`--no-git` flag)
-- [ ] Error handling works for invalid inputs
-- [ ] Help text and validation messages are clear
-- [ ] All conditional logic works (testing, tailwind, docker options)
-
-## 🔍 Code Quality
-
-### Linting and Formatting
+### Security Testing
 
 ```bash
-# Format code
-go fmt ./...
+# Run security tests
+go test ./cmd -run TestSecurity
 
-# Run linter (if you have golangci-lint installed)
-golangci-lint run
-
-# Check for common issues
-go vet ./...
+# Run with security focus
+go test ./cmd -v -run "TestValidate|TestSecurity"
 ```
 
-### Code Review Checklist
+### Common Security Patterns
 
-- [ ] Code follows Go conventions
-- [ ] Functions are well-documented
-- [ ] Error handling is appropriate
-- [ ] Tests are included for new functionality
-- [ ] No obvious performance issues
-- [ ] Security considerations addressed
-- [ ] Documentation is updated
+#### Input Validation
 
-### Performance Considerations
+```go
+// Always validate user inputs
+func processInput(input string) error {
+    sanitized, err := ValidateAndSanitizeName(input, nil)
+    if err != nil {
+        return err
+    }
+    // Process sanitized input...
+}
+```
 
-- **Template Processing**: Use efficient string operations
-- **File Operations**: Minimize disk I/O
-- **Memory Usage**: Avoid unnecessary allocations
-- **Concurrency**: Consider parallel processing for large templates
+#### Path Security
 
-## 🚀 Release Process
+```go
+// Always validate paths
+func processPath(path string) error {
+    cleanPath, err := ValidateAndSanitizePath(path, nil)
+    if err != nil {
+        return err
+    }
+    // Process clean path...
+}
+```
+
+#### Template Security
+
+```go
+// Always validate template names
+func processTemplate(templateName string) error {
+    if err := ValidateTemplateName(templateName); err != nil {
+        return err
+    }
+    // Process template...
+}
+```
+
+## 🧪 Testing Development
+
+### Running Tests
+
+```bash
+# Run all tests
+go test ./...
+
+# Run specific test
+go test ./cmd -run TestValidateAndSanitizeName
+
+# Run with coverage
+go test ./cmd -cover
+
+# Run benchmarks
+go test ./cmd -bench=.
+
+# Run tests with verbose output
+go test ./cmd -v
+```
+
+### Test Coverage Requirements
+
+- **Security Functions**: 100% coverage required
+- **Command Functions**: 100% coverage required
+- **Core Logic**: 100% coverage required
+- **Error Paths**: 100% coverage required
+
+### Adding Tests
+
+#### Unit Tests
+
+```go
+func TestNewFunction(t *testing.T) {
+    tests := []struct {
+        name        string
+        input       string
+        expectError bool
+        expected    string
+    }{
+        {"valid input", "test", false, "test"},
+        {"empty input", "", true, ""},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result, err := NewFunction(tt.input)
+            // Test logic...
+        })
+    }
+}
+```
+
+#### Integration Tests
+
+```go
+func TestEndToEndWorkflow(t *testing.T) {
+    // Setup test environment
+    tempDir, err := os.MkdirTemp("", "test")
+    if err != nil {
+        t.Fatalf("failed to create temp dir: %v", err)
+    }
+    defer os.RemoveAll(tempDir)
+
+    // Change to temp directory
+    originalDir, err := os.Getwd()
+    if err != nil {
+        t.Fatalf("failed to get current directory: %v", err)
+    }
+    defer os.Chdir(originalDir)
+
+    if err := os.Chdir(tempDir); err != nil {
+        t.Fatalf("failed to change directory: %v", err)
+    }
+
+    // Test the workflow
+    // ... test implementation
+}
+```
+
+## 🚀 Performance Development
+
+### Benchmarking
+
+```bash
+# Run benchmarks
+go test ./cmd -bench=.
+
+# Run specific benchmark
+go test ./cmd -bench=BenchmarkValidateAndSanitizeName
+
+# Run with memory profiling
+go test ./cmd -bench=. -benchmem
+```
+
+### Performance Guidelines
+
+- **Security Functions**: Should complete in < 100μs
+- **Command Functions**: Should complete in < 1s
+- **Template Processing**: Should complete in < 10s for typical templates
+
+### Performance Testing
+
+```go
+func BenchmarkFunctionName(b *testing.B) {
+    input := "test-input"
+    for i := 0; i < b.N; i++ {
+        _, err := FunctionName(input)
+        if err != nil {
+            b.Fatalf("unexpected error: %v", err)
+        }
+    }
+}
+```
+
+## 📝 Documentation Development
+
+### Documentation Requirements
+
+When adding new features:
+
+- [ ] Update README.md with new features
+- [ ] Update user guide with usage examples
+- [ ] Update architecture documentation
+- [ ] Add inline code comments
+- [ ] Update command help text
+
+### Documentation Standards
+
+- Use clear, concise language
+- Include code examples
+- Provide security considerations
+- Include testing instructions
+- Update maintainer information
+
+## 🔄 Release Process
 
 ### Pre-Release Checklist
 
 - [ ] All tests pass
+- [ ] Security tests pass
+- [ ] Performance benchmarks are acceptable
 - [ ] Documentation is updated
-- [ ] Version is updated in relevant files
+- [ ] Version is updated
 - [ ] Changelog is updated
-- [ ] Release notes are prepared
 
-### Creating a Release
+### Release Steps
 
-1. **Update Version**
+```bash
+# 1. Update version
+# Edit main.go or version file
 
-   ```bash
-   # Update version in main.go or version.go
-   ```
+# 2. Run all tests
+go test ./...
 
-2. **Create Release Tag**
+# 3. Build for all platforms
+go build -o om main.go
 
-   ```bash
-   git tag v0.5.0
-   git push origin v0.5.0
-   ```
+# 4. Create release tag
+git tag v0.6.0
+git push origin v0.6.0
 
-3. **Monitor Release**
-   - Check GitHub Actions for build status
-   - Verify binaries are uploaded
-   - Test installation from package managers
-
-### Release Automation
-
-The project uses GoReleaser for automated releases:
-
-- **Multi-platform builds**: Windows, macOS, Linux
-- **Package managers**: Homebrew, Scoop
-- **GitHub Releases**: Automatic release creation
-- **Checksums**: SHA256 checksums for all binaries
+# 5. Verify release
+# Check GitHub releases
+# Test installation methods
+```
 
 ## 🤝 Contributing Guidelines
 
-### Before Contributing
-
-1. **Check Existing Issues**: Look for existing issues or discussions
-2. **Discuss Changes**: Open an issue for significant changes
-3. **Follow the Style Guide**: Use consistent code style
-4. **Write Tests**: Include tests for new functionality
-
 ### Pull Request Process
 
-1. **Create Feature Branch**: Use descriptive branch names
-2. **Make Changes**: Follow the development workflow
-3. **Test Thoroughly**: Ensure all tests pass
-4. **Update Documentation**: Update relevant docs
-5. **Submit PR**: Include clear description and testing instructions
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/new-feature`
+3. **Make your changes** following the guidelines above
+4. **Add tests** for new functionality
+5. **Update documentation** as needed
+6. **Run all tests**: `go test ./...`
+7. **Commit your changes**: Use conventional commit messages
+8. **Push to your branch**: `git push origin feature/new-feature`
+9. **Create a pull request**
+
+### Commit Message Format
+
+```
+type(scope): description
+
+[optional body]
+
+[optional footer]
+```
+
+Examples:
+
+- `feat(cmd): add new init command for project management`
+- `fix(security): prevent path traversal in template names`
+- `test(cmd): add comprehensive tests for security functions`
+- `docs(readme): update with new security features`
 
 ### Code Review Process
 
-1. **Automated Checks**: CI/CD runs tests and linting
-2. **Manual Review**: Maintainers review the code
-3. **Address Feedback**: Make requested changes
-4. **Merge**: Once approved, changes are merged
-
-## 🔧 Development Tools
-
-### Recommended Tools
-
-- **VS Code**: With Go extension
-- **GoLand**: Full-featured Go IDE
-- **Delve**: Go debugger
-- **golangci-lint**: Linting tool
-- **gofmt**: Code formatter
-
-### Useful Commands
-
-```bash
-# Run with debug output
-go run main.go ui
-
-# Build with debug symbols
-go build -gcflags=all="-N -l" -o open-workbench-cli main.go
-
-# Profile the application
-go test -cpuprofile cpu.prof -bench .
-go tool pprof cpu.prof
-
-# Memory profiling
-go test -memprofile mem.prof -bench .
-go tool pprof mem.prof
-```
-
-### Debugging Tips
-
-1. **Use Debug Logging**: Add debug prints for development
-2. **Test Incrementally**: Test small changes frequently
-3. **Use Delve**: For complex debugging scenarios
-4. **Check Templates**: Verify template syntax and structure
-5. **Monitor File Operations**: Check file creation and permissions
-
-## 📚 Learning Resources
-
-### Go Resources
-
-- [Go Documentation](https://golang.org/doc/)
-- [Effective Go](https://golang.org/doc/effective_go.html)
-- [Go by Example](https://gobyexample.com/)
-
-### Project-Specific Resources
-
-- [Template System Documentation](./template-system.md)
-- [Architecture Overview](./architecture.md)
-- [API Reference](./api-reference.md)
-
-### Related Technologies
-
-- [Bubble Tea](https://github.com/charmbracelet/bubbletea): TUI framework
-- [Survey](https://github.com/AlecAivazis/survey): Interactive prompts
-- [GoReleaser](https://goreleaser.com/): Release automation
-
-## 🆘 Getting Help
-
-### Internal Resources
-
-- **Documentation**: Check the docs directory
-- **Issues**: Search existing GitHub issues
-- **Discussions**: Use GitHub Discussions for questions
-
-### External Resources
-
-- **Go Community**: [Go Forum](https://forum.golangbridge.org/)
-- **Stack Overflow**: Tag questions with `go`
-- **Reddit**: r/golang community
-
-### Contact Maintainers
-
-- **GitHub Issues**: For bugs and feature requests
-- **GitHub Discussions**: For questions and discussions
-- **Email**: For private or sensitive matters
+- All changes require review
+- Security changes require security review
+- Tests must pass before merge
+- Documentation must be updated
+- Performance impact must be considered
 
 ---
 
-**Last Updated**: 07/29/2025  
-**Version**: v0.5.0  
-**Maintainers**: [Project Maintainers]
+**Maintainer**: Jash Kahar  
+**Last Updated**: February 8, 2025
