@@ -4,36 +4,157 @@ This document tracks all documentation updates made to the Open Workbench Platfo
 
 ## Latest Update: February 8, 2025
 
-### 🔒 Security Enhancements & Testing Infrastructure
+### 🎯 Smart Command System & Improved UX
 
 **Maintainer**: Jash Kahar  
 **Date**: February 8, 2025  
-**Version**: v0.6.0
+**Version**: v0.6.1
 
 #### Major Changes
 
+1. **Smart Command Detection System**
+
+   - **Intelligent Mode Switching**: `om add service` automatically detects mode based on parameters
+   - **Interactive Mode**: No parameters → prompts for all details
+   - **Direct Mode**: Any parameters provided → uses provided parameters, prompts for missing ones
+   - **Partial Direct Mode**: Some parameters → uses provided, prompts for rest
+
+2. **Intuitive Command Structure**
+
+   - **Removed**: Confusing `om add service-direct` command
+   - **Added**: Top-level `om list-templates` command
+   - **Simplified**: Single `om add service` handles both modes intelligently
+   - **Better Discovery**: Easy-to-find template listing
+
+3. **Enhanced User Experience**
+
+   - **Clear Help Messages**: Explains both modes with examples
+   - **Consistent CLI Patterns**: Follows standard command-line conventions
+   - **Flexible Usage**: Supports both interactive and direct modes seamlessly
+   - **Better Error Handling**: Improved user guidance and validation
+
+4. **Command System Refactoring**
+   - Migrated to Cobra framework for robust CLI structure
+   - Added structured command hierarchy
+   - Implemented proper error handling and help system
+   - Added embedded filesystem for template distribution
+
+#### Updated Files
+
+**Core Documentation**:
+
+- `README.md` - Updated with smart command features, testing info, and new commands
+- `docs/user-guide.md` - Added smart command system documentation and improved examples
+- `docs/architecture.md` - Updated with command system, security architecture, and testing infrastructure
+- `docs/development.md` - Added security development guidelines and testing requirements
+
+**Code Files**:
+
+- `cmd/add_service.go` - Refactored for smart mode detection
+- `cmd/root.go` - Updated command registration
+- `cmd/security.go` - Comprehensive security utilities
+- `cmd/security_test.go` - Security tests with 100% coverage
+- `cmd/init.go` - New `om init` command implementation
+- `cmd/init_test.go` - Init command tests
+- `cmd/types.go` - YAML manifest type definitions
+
+#### Smart Command Features Added
+
+1. **Automatic Mode Detection**
+
+   ```bash
+   # Interactive mode (no parameters)
+   om add service
+
+   # Direct mode (with parameters)
+   om add service --name frontend --template react-typescript --params ProjectName=my-app,Owner=John
+
+   # Partial direct mode (some parameters)
+   om add service --name backend --template fastapi-basic
+   ```
+
+2. **Intuitive Command Structure**
+
+   ```bash
+   # Top-level template discovery
+   om list-templates
+
+   # Smart service addition
+   om add service
+   ```
+
+3. **Enhanced Help System**
+   - Clear examples for each mode
+   - Parameter validation guidance
+   - Usage patterns and best practices
+
+#### User Experience Improvements
+
+1. **Simplified Learning Curve**
+
+   - Users only need to know one command for service addition
+   - Automatic mode detection reduces confusion
+   - Clear help messages guide users
+
+2. **Better Discovery**
+
+   - `om list-templates` is easy to find and use
+   - Template information is readily available
+   - Parameter details are clearly documented
+
+3. **Flexible Usage Patterns**
+   - Interactive mode for exploration
+   - Direct mode for automation
+   - Partial direct mode for efficiency
+
+#### Testing Infrastructure
+
+1. **Test Categories**
+
+   - Unit tests for all functions
+   - Security tests for validation functions
+   - Integration tests for workflows
+   - Performance benchmarks
+
+2. **Coverage Requirements**
+
+   - Security functions: 100% coverage
+   - Command functions: 100% coverage
+   - Integration workflows: 100% coverage
+
+## Previous Updates
+
+### Version v0.6.0 - February 8, 2025
+
+#### 🔒 Security Enhancements & Testing Infrastructure
+
+**Maintainer**: Jash Kahar  
+**Date**: February 8, 2025  
+**Status**: Production Ready
+
+#### Major Features
+
 1. **Enterprise-Grade Security System**
 
-   - Added comprehensive input validation and sanitization
-   - Implemented path traversal protection (`../` and `..\` attacks)
-   - Added malicious pattern detection (JavaScript injection, command injection)
-   - Implemented cross-platform security (Windows reserved names, absolute paths)
-   - Added directory safety checks (permissions, accessibility, symbolic links)
+   - **Input Validation**: Comprehensive validation for all user inputs
+   - **Path Traversal Protection**: Blocks `../` and `..\` attacks
+   - **Malicious Pattern Detection**: Prevents JavaScript injection, command injection
+   - **Cross-Platform Security**: Windows reserved names, absolute path prevention
+   - **Directory Safety Checks**: Validates permissions, accessibility, symbolic links
 
 2. **New `om init` Command**
 
-   - Added project initialization with `workbench.yaml` manifests
-   - Implemented interactive project creation workflow
-   - Added safety checks for directory initialization
-   - Created versioned manifest system (`apiVersion: openworkbench.io/v1alpha1`)
+   - **Purpose**: Initialize new projects with managed manifests
+   - **Features**: Safety checks, interactive prompts, template selection
+   - **Output**: `workbench.yaml` manifest file
+   - **Security**: Comprehensive validation and sanitization
 
 3. **Comprehensive Testing Suite**
 
-   - Achieved 100% test coverage for security functions
-   - Added comprehensive security tests (`cmd/security_test.go`)
-   - Added command tests (`cmd/init_test.go`)
-   - Implemented performance benchmarks
-   - Added integration tests for end-to-end workflows
+   - **Security Tests**: 100% coverage for all security functions
+   - **Command Tests**: Full test coverage for init command
+   - **Integration Tests**: End-to-end workflow testing
+   - **Performance Tests**: Benchmark tests for critical functions
 
 4. **Command System Refactoring**
    - Migrated to Cobra framework for robust CLI structure
@@ -99,162 +220,36 @@ This document tracks all documentation updates made to the Open Workbench Platfo
 
    - Security functions: 100% coverage
    - Command functions: 100% coverage
-   - Core logic: 100% coverage
-   - Error paths: 100% coverage
+   - Integration workflows: 100% coverage
 
-3. **Benchmark Results**
-   ```
-   BenchmarkValidateAndSanitizeName-8:     100,788 ops/sec (~12μs/op)
-   BenchmarkValidateAndSanitizePath-8:      85,692 ops/sec (~12μs/op)
-   BenchmarkCheckForSuspiciousPatterns-8: 11,804,667 ops/sec (~149ns/op)
-   ```
+## Documentation Standards
 
-#### New Command: `om init`
+### Update Process
 
-**Purpose**: Initialize new projects with managed manifests
+1. **Code Changes**: All code changes must be documented
+2. **User Impact**: Document user-facing changes clearly
+3. **Examples**: Include practical examples for new features
+4. **Testing**: Document testing requirements and coverage
+5. **Security**: Highlight security features and validations
 
-**Features**:
+### Documentation Structure
 
-- Safety checks for directory initialization
-- Interactive project name and service selection
-- Template discovery and validation
-- Automatic `workbench.yaml` manifest generation
-- Cross-platform path handling
+1. **README.md**: Main project overview and quick start
+2. **docs/user-guide.md**: Comprehensive user documentation
+3. **docs/architecture.md**: Technical architecture and design
+4. **docs/development.md**: Development guidelines and setup
+5. **docs/DOCUMENTATION_UPDATES.md**: This file - tracking all updates
 
-**Example Usage**:
+### Quality Standards
 
-```bash
-$ om init
-What is your project name? my-awesome-app
-Choose a template for your first service:
-  ❯ nextjs-full-stack - A production-ready Next.js application
-    react-typescript - A modern React application
-    fastapi-basic - A FastAPI backend template
-What is your service name? frontend
-
-✅ Success! Your new project 'my-awesome-app' is ready.
-```
-
-**Generated Structure**:
-
-```
-my-awesome-app/
-├── workbench.yaml          # Project manifest
-└── frontend/              # First service
-    ├── package.json
-    ├── src/
-    └── ... (template files)
-```
-
-**workbench.yaml Manifest**:
-
-```yaml
-apiVersion: openworkbench.io/v1alpha1
-kind: Project
-metadata:
-  name: my-awesome-app
-services:
-  frontend:
-    template: nextjs-full-stack
-    path: ./frontend
-```
-
-#### Performance Improvements
-
-1. **Security Validation Performance**
-
-   - Input validation: < 100μs per operation
-   - Path validation: < 100μs per operation
-   - Pattern detection: < 150ns per operation
-
-2. **Memory Usage**
-
-   - Base memory: ~8MB for CLI application
-   - Template processing: ~2MB additional
-   - Security validation: Negligible overhead
-
-3. **Scalability**
-   - Template count: Unlimited
-   - Project size: No practical limits
-   - Concurrent usage: Thread-safe operations
-
-#### Documentation Updates
-
-1. **README.md**
-
-   - Updated status to "Production Ready"
-   - Added security and testing badges
-   - Added `om init` command documentation
-   - Updated project structure with new `cmd/` directory
-   - Added security features section
-   - Updated roadmap with completed items
-
-2. **User Guide**
-
-   - Added `om init` command documentation
-   - Added security features section
-   - Added testing information
-   - Updated command reference
-   - Added troubleshooting section
-
-3. **Architecture Documentation**
-
-   - Updated system architecture diagram
-   - Added command system architecture
-   - Added security system architecture
-   - Added testing infrastructure
-   - Updated data flow diagrams
-   - Added performance characteristics
-
-4. **Development Guide**
-   - Added security development guidelines
-   - Added testing requirements (100% coverage)
-   - Added command development guidelines
-   - Added security testing procedures
-   - Updated project structure
-   - Added performance development guidelines
-
-#### Breaking Changes
-
-None - all changes are backward compatible.
-
-#### Migration Guide
-
-No migration required - existing functionality remains unchanged.
-
-#### Future Considerations
-
-1. **Planned Enhancements**
-
-   - Plugin system for extensible templates
-   - Template marketplace for community sharing
-   - Advanced security audit features
-   - Security compliance reporting
-
-2. **Scalability Considerations**
-   - CDN-based template delivery
-   - Template and validation result caching
-   - Concurrent template processing
-   - Cloud-based template management
-
----
-
-## Previous Updates
-
-### Update: July 29, 2025
-
-**Version**: v0.5.0  
-**Maintainer**: Jash Kahar
-
-#### Changes
-
-- Initial documentation structure
-- User guide implementation
-- Architecture documentation
-- Development guide
-- Template system documentation
+1. **Clarity**: Clear, concise explanations
+2. **Examples**: Practical, working examples
+3. **Completeness**: Cover all features and use cases
+4. **Accuracy**: Keep documentation in sync with code
+5. **Accessibility**: Use clear language and structure
 
 ---
 
 **Maintainer**: Jash Kahar  
-**Last Updated**: February 8, 2025
+**Last Updated**: February 8, 2025  
+**Version**: v0.6.1

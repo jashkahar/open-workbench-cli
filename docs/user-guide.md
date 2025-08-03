@@ -39,6 +39,13 @@ go build -o om main.go
 # Initialize a new project (recommended)
 om init
 
+# Add services with smart mode detection
+om add service                    # Interactive mode
+om add service --name frontend --template react-typescript --params ProjectName=my-app,Owner=John  # Direct mode
+
+# List available templates
+om list-templates
+
 # Start the interactive TUI
 om ui
 
@@ -50,11 +57,46 @@ om
 
 ### Available Commands
 
-| Command     | Description                    |
-| ----------- | ------------------------------ |
-| `om init`   | Initialize a new project (NEW) |
-| `om`        | Interactive mode (recommended) |
-| `om create` | CLI mode with flags            |
+| Command             | Description                   | Mode               |
+| ------------------- | ----------------------------- | ------------------ |
+| `om init`           | Initialize new project        | Interactive        |
+| `om add service`    | Add service (smart detection) | Interactive/Direct |
+| `om list-templates` | List available templates      | Direct             |
+| `om`                | Interactive mode              | Interactive        |
+
+### Smart Command System
+
+The CLI features intelligent mode detection that automatically adapts to your needs:
+
+#### Interactive Mode
+
+```bash
+om add service
+```
+
+- Prompts for all details interactively
+- Perfect for exploration and learning
+- Guided parameter collection with validation
+
+#### Direct Mode
+
+```bash
+om add service --name frontend --template react-typescript --params ProjectName=my-app,Owner=John,IncludeTesting=true
+```
+
+- Uses all provided parameters
+- Perfect for automation and scripting
+- No prompts for provided parameters
+
+#### Partial Direct Mode
+
+```bash
+om add service --name backend --template fastapi-basic
+```
+
+- Uses provided parameters
+- Prompts only for missing parameters
+- Best of both worlds
 
 ### Project Management with `om init` (NEW)
 
@@ -125,6 +167,63 @@ services:
     template: nextjs-full-stack
     path: ./frontend
 ```
+
+### Smart Service Addition
+
+The `om add service` command intelligently adapts to your needs:
+
+#### Interactive Mode
+
+```bash
+om add service
+```
+
+**Features:**
+
+- Template selection from all available templates
+- Organized parameter collection with grouping
+- Comprehensive validation and error handling
+- Optional git initialization and dependency installation
+
+#### Direct Mode
+
+```bash
+om add service --name frontend --template react-typescript --params ProjectName=my-app,Owner=John,IncludeTesting=true,IncludeTailwind=true
+```
+
+**Features:**
+
+- All parameters specified via command line
+- Perfect for automation and CI/CD pipelines
+- No interactive prompts
+- Fast execution
+
+#### Partial Direct Mode
+
+```bash
+om add service --name backend --template fastapi-basic
+```
+
+**Features:**
+
+- Uses provided parameters
+- Prompts only for missing parameters
+- Best balance of speed and flexibility
+
+### Template Discovery
+
+Use `om list-templates` to explore available templates:
+
+```bash
+om list-templates
+```
+
+**Output includes:**
+
+- Template names and descriptions
+- Available parameters for each template
+- Parameter types and default values
+- Usage examples
 
 ### Interactive Modes
 
@@ -198,141 +297,44 @@ con                   # Windows reserved names
 
 #### Security Validations
 
+The CLI performs comprehensive security checks:
+
 - **Path Traversal Protection**: Blocks `../` and `..\` attacks
 - **Malicious Pattern Detection**: Prevents JavaScript injection, command injection
 - **Cross-Platform Security**: Windows reserved names, absolute path prevention
 - **Directory Safety Checks**: Validates permissions, accessibility, symbolic links
 - **Template Security**: Secure template name validation and content verification
 
-#### Security Configuration
+## 📋 Template System
 
-The security system is configurable and extensible:
+### Available Templates
 
-```go
-// Security configuration
-type SecurityConfig struct {
-    MaxPathLength     int
-    MaxNameLength     int
-    AllowedCharacters *regexp.Regexp
-    ForbiddenPatterns []*regexp.Regexp
-}
-```
+#### 🎨 nextjs-full-stack
 
-## 🧪 Testing
+A production-ready Next.js application with TypeScript, testing, Tailwind CSS, Docker, and CI/CD setup.
 
-### Comprehensive Test Suite
+#### ⚡ fastapi-basic
 
-The platform includes a comprehensive test suite with 100% coverage:
+A FastAPI backend template with Python best practices, virtual environments, and API documentation.
 
-```bash
-# Run all tests
-go test ./...
+#### 🎯 react-typescript
 
-# Run tests with coverage
-go test ./... -cover
+A modern React application with Vite, TypeScript, and modern tooling.
 
-# Run security tests
-go test ./cmd -v
+#### 🚀 express-api
 
-# Run benchmarks
-go test ./cmd -bench=.
-```
+A Node.js Express API template with TypeScript, testing, and documentation.
 
-### Test Categories
+#### 🟢 vue-nuxt
 
-1. **Security Tests**: Input validation, path traversal, malicious patterns
-2. **Command Tests**: Init command, project creation, manifest generation
-3. **Integration Tests**: End-to-end workflow testing
-4. **Performance Tests**: Benchmark tests for critical functions
-
-### Test Results
-
-```
-=== RUN   TestValidateAndSanitizePath --- PASS
-=== RUN   TestValidateAndSanitizeName --- PASS
-=== RUN   TestValidateDirectorySafety --- PASS
-=== RUN   TestValidateTemplateName --- PASS
-=== RUN   TestCheckForSuspiciousPatterns --- PASS
-=== RUN   TestCreateProjectDirectories --- PASS
-=== RUN   TestCreateWorkbenchManifest --- PASS
-=== RUN   TestCheckDirectorySafety --- PASS
-
-BenchmarkValidateAndSanitizeName-8:     100,788 ops/sec (~12μs/op)
-BenchmarkValidateAndSanitizePath-8:      85,692 ops/sec (~12μs/op)
-BenchmarkCheckForSuspiciousPatterns-8: 11,804,667 ops/sec (~149ns/op)
-```
-
-## 📋 Template Parameters
+A Vue.js Nuxt application with TypeScript, auto-imports, and SSR configuration.
 
 ### Parameter Types
 
-The CLI supports various parameter types for collecting user input:
-
-#### String Parameters
-
-```json
-{
-  "name": "ProjectName",
-  "prompt": "What is your project name?",
-  "type": "string",
-  "required": true,
-  "validation": {
-    "regex": "^[a-z0-9-]+$",
-    "errorMessage": "Project name can only contain lowercase letters, numbers, and hyphens."
-  }
-}
-```
-
-#### Boolean Parameters
-
-```json
-{
-  "name": "IncludeTesting",
-  "prompt": "Include testing setup?",
-  "type": "boolean",
-  "default": true
-}
-```
-
-#### Select Parameters
-
-```json
-{
-  "name": "TestingFramework",
-  "prompt": "Choose testing framework:",
-  "type": "select",
-  "options": ["Jest", "Vitest"],
-  "condition": "IncludeTesting == true"
-}
-```
-
-#### Multiselect Parameters
-
-```json
-{
-  "name": "Features",
-  "prompt": "Select features to include:",
-  "type": "multiselect",
-  "options": ["Tailwind CSS", "Docker", "CI/CD", "Storybook"]
-}
-```
-
-### Parameter Groups
-
-Parameters can be organized into groups for better UX:
-
-```json
-{
-  "name": "ProjectName",
-  "group": "Basic Settings",
-  "prompt": "What is your project name?"
-},
-{
-  "name": "IncludeTesting",
-  "group": "Testing",
-  "prompt": "Include testing setup?"
-}
-```
+- **String**: Text input with validation
+- **Boolean**: Yes/No questions with defaults
+- **Select**: Single-choice dropdown
+- **Multiselect**: Multiple-choice selection
 
 ### Conditional Logic
 
@@ -347,308 +349,175 @@ Parameters can be conditionally shown based on other parameter values:
 }
 ```
 
-## 🔧 Post-Scaffolding Actions
+### Validation
 
-### File Deletion
-
-Remove files based on conditions:
+Custom validation with regex patterns and error messages:
 
 ```json
 {
-  "postScaffold": {
-    "filesToDelete": [
-      {
-        "path": "src/components/Example.tsx",
-        "condition": "IncludeExamples == false"
-      }
-    ]
+  "name": "ProjectName",
+  "validation": {
+    "regex": "^[a-z0-9-]+$",
+    "errorMessage": "Project name can only contain lowercase letters, numbers, and hyphens."
   }
 }
 ```
 
-### Command Execution
+## 🛠️ Advanced Usage
 
-Run setup commands after project creation:
+### Working with Projects
 
-```json
-{
-  "postScaffold": {
-    "commands": [
-      {
-        "command": "npm install",
-        "description": "Installing dependencies...",
-        "condition": "InstallDeps == true"
-      },
-      {
-        "command": "git init",
-        "description": "Initializing git repository...",
-        "condition": "InitGit == true"
-      }
-    ]
-  }
-}
-```
+#### Adding Multiple Services
 
-## 🎨 Available Templates
-
-### nextjs-full-stack
-
-A production-ready Next.js application with:
-
-- **TypeScript**: Full TypeScript support with strict configuration
-- **Testing**: Jest or Vitest with comprehensive test setup
-- **Styling**: Tailwind CSS with PostCSS configuration
-- **Docker**: Ready-to-use Dockerfile for containerization
-- **Quality Tools**: ESLint, Prettier, and Husky for code quality
-- **CI/CD Ready**: GitHub Actions workflows included
-
-**Parameters:**
-
-- `ProjectName` (string): Project name
-- `Owner` (string): Project owner
-- `IncludeTesting` (boolean): Include testing setup
-- `TestingFramework` (select): Jest or Vitest
-- `IncludeTailwind` (boolean): Include Tailwind CSS
-- `IncludeDocker` (boolean): Include Docker configuration
-- `InstallDeps` (boolean): Install dependencies after creation
-- `InitGit` (boolean): Initialize git repository
-
-### fastapi-basic
-
-A FastAPI backend template with:
-
-- **FastAPI**: Modern, fast web framework for building APIs
-- **Uvicorn**: ASGI server for running the application
-- **Python Best Practices**: Virtual environment setup and dependency management
-- **API Documentation**: Automatic OpenAPI/Swagger documentation
-- **Hot Reload**: Development server with auto-reload capability
-
-**Parameters:**
-
-- `ProjectName` (string): Project name
-- `Owner` (string): Project owner
-- `IncludeTesting` (boolean): Include testing setup
-- `InstallDeps` (boolean): Install dependencies after creation
-- `InitGit` (boolean): Initialize git repository
-
-### react-typescript
-
-A modern React application with:
-
-- **Vite**: Lightning-fast build tool and dev server
-- **TypeScript**: Full TypeScript support
-- **Modern Tooling**: ESLint, Prettier configuration
-- **Component Library**: Ready-to-use component structure
-
-**Parameters:**
-
-- `ProjectName` (string): Project name
-- `Owner` (string): Project owner
-- `IncludeTesting` (boolean): Include testing setup
-- `TestingFramework` (select): Jest or Vitest
-- `IncludeTailwind` (boolean): Include Tailwind CSS
-- `InstallDeps` (boolean): Install dependencies after creation
-- `InitGit` (boolean): Initialize git repository
-
-### express-api
-
-A Node.js Express API template with:
-
-- **Express.js**: Fast, unopinionated web framework
-- **TypeScript**: Full TypeScript support
-- **Testing**: Jest setup with API testing utilities
-- **Documentation**: Swagger/OpenAPI documentation
-
-**Parameters:**
-
-- `ProjectName` (string): Project name
-- `Owner` (string): Project owner
-- `IncludeTesting` (boolean): Include testing setup
-- `InstallDeps` (boolean): Install dependencies after creation
-- `InitGit` (boolean): Initialize git repository
-
-### vue-nuxt
-
-A Vue.js Nuxt application with:
-
-- **Nuxt 3**: Full-stack Vue.js framework
-- **TypeScript**: Full TypeScript support
-- **Auto-imports**: Automatic component and composable imports
-- **SSR Ready**: Server-side rendering configuration
-
-**Parameters:**
-
-- `ProjectName` (string): Project name
-- `Owner` (string): Project owner
-- `IncludeTesting` (boolean): Include testing setup
-- `InstallDeps` (boolean): Install dependencies after creation
-- `InitGit` (boolean): Initialize git repository
-
-## 🚀 Advanced Usage
-
-### Custom Templates
-
-Create your own templates by following the template structure:
-
-1. Create a new directory in `templates/` with your template name
-2. Add a `template.json` file with parameter definitions
-3. Include your template files with Go template syntax where needed
-4. Test the template using the CLI
-
-### Template Manifest Structure
-
-```json
-{
-  "name": "Template Name",
-  "description": "Template description",
-  "parameters": [
-    {
-      "name": "ParameterName",
-      "prompt": "User prompt",
-      "group": "Group Name",
-      "type": "string|boolean|select|multiselect",
-      "required": true,
-      "default": "default value",
-      "options": ["option1", "option2"],
-      "condition": "OtherParam == true",
-      "validation": {
-        "regex": "^[a-z0-9-]+$",
-        "errorMessage": "Custom error message"
-      }
-    }
-  ],
-  "postScaffold": {
-    "filesToDelete": [
-      {
-        "path": "file-to-delete.js",
-        "condition": "IncludeFeature == false"
-      }
-    ],
-    "commands": [
-      {
-        "command": "npm install",
-        "description": "Installing dependencies...",
-        "condition": "InstallDeps == true"
-      }
-    ]
-  }
-}
-```
-
-### Go Template Syntax
-
-Use Go template syntax in your template files:
-
-````go
-// In package.json
-{
-  "name": "{{.ProjectName}}",
-  "version": "1.0.0",
-  "description": "{{.ProjectName}} - A {{.TemplateName}} project",
-  "author": "{{.Owner}}"
-}
-
-// In README.md
-# {{.ProjectName}}
-
-Created by {{.Owner}} using Open Workbench Platform.
-
-{{if .IncludeTesting}}
-## Testing
-
-Run tests with:
 ```bash
-npm test
-````
+# Add a frontend service
+om add service --name frontend --template react-typescript
 
-{{end}}
+# Add a backend service
+om add service --name backend --template fastapi-basic
 
-````
+# Add an API service
+om add service --name api --template express-api
+```
 
-### Conditional Logic
+#### Project Structure Example
 
-Use conditional statements in templates:
+```
+my-project/
+├── workbench.yaml
+├── frontend/          # React TypeScript frontend
+├── backend/           # FastAPI backend
+└── api/              # Express API
+```
 
-```go
-{{if .IncludeTesting}}
-import { render, screen } from '@testing-library/react';
-{{end}}
+### Automation Examples
 
-{{if eq .TestingFramework "Jest"}}
-import '@testing-library/jest-dom';
-{{else}}
-import { vi } from 'vitest';
-{{end}}
-````
+#### CI/CD Pipeline
+
+```bash
+# Automated project creation
+om init --name my-app --template nextjs-full-stack --service frontend
+
+# Automated service addition
+om add service --name backend --template fastapi-basic --params ProjectName=my-app,Owner=CI,IncludeTesting=true,IncludeDocker=true
+```
+
+#### Scripting
+
+```bash
+#!/bin/bash
+# Create a full-stack project
+om init
+om add service --name frontend --template react-typescript --params ProjectName=my-app,Owner=Dev,IncludeTesting=true
+om add service --name backend --template fastapi-basic --params ProjectName=my-app,Owner=Dev,IncludeTesting=true
+```
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-#### Permission Denied
+#### Permission Errors
 
 ```bash
-Error: failed to create project directory: permission denied
+# Ensure the directory is writable
+chmod 755 my-project
 ```
-
-**Solution**: Ensure you have write permissions in the current directory.
 
 #### Template Not Found
 
 ```bash
-Error: template not found: my-template
+# List available templates
+om list-templates
+
+# Check template name spelling
+om add service --template nextjs-full-stack
 ```
 
-**Solution**: Check that the template exists in the `templates/` directory.
-
-#### Invalid Project Name
+#### Parameter Validation Errors
 
 ```bash
-Error: project name can only contain lowercase letters, numbers, and hyphens
+# Use valid project names (lowercase, hyphens only)
+om add service --name my-project --template react-typescript
+
+# Avoid special characters and reserved names
+# ❌ Don't use: my_project, MyProject, con, aux
+# ✅ Use: my-project, project123, frontend
 ```
-
-**Solution**: Use only lowercase letters, numbers, and hyphens in project names.
-
-#### Directory Not Empty
-
-```bash
-Error: directory is not empty. Please run 'om init' in an empty directory
-```
-
-**Solution**: Run `om init` in an empty directory or one containing only hidden files.
 
 ### Getting Help
 
 ```bash
-# Get help for all commands
+# General help
 om --help
 
-# Get help for specific command
+# Command-specific help
 om init --help
-om create --help
-
-# Get help for specific template
-om create nextjs-full-stack --help
+om add service --help
+om list-templates --help
 ```
 
-### Debug Mode
+## 📚 Examples
 
-Enable debug mode for more verbose output:
+### Quick Start Examples
+
+#### Create a Full-Stack Project
 
 ```bash
-# Set debug environment variable
-export DEBUG=true
+# Initialize project
 om init
+
+# Add frontend
+om add service --name frontend --template react-typescript
+
+# Add backend
+om add service --name backend --template fastapi-basic
 ```
 
-## 📚 Additional Resources
+#### Create a Monorepo
 
-- [Architecture Documentation](architecture.md)
-- [Template System Guide](template-system.md)
-- [Development Guide](development.md)
-- [Contributing Guidelines](../CONTRIBUTING.md)
+```bash
+# Initialize project
+om init
+
+# Add multiple services
+om add service --name web --template nextjs-full-stack
+om add service --name api --template express-api
+om add service --name admin --template react-typescript
+```
+
+#### Automation Example
+
+```bash
+# Create project with all parameters
+om init
+om add service --name frontend --template react-typescript --params ProjectName=my-app,Owner=Team,IncludeTesting=true,IncludeTailwind=true,IncludeDocker=true,InstallDeps=true,InitGit=true
+om add service --name backend --template fastapi-basic --params ProjectName=my-app,Owner=Team,IncludeTesting=true,IncludeDocker=true,InstallDeps=true,InitGit=true
+```
+
+## 🎯 Best Practices
+
+### Project Organization
+
+1. **Use descriptive service names**: `frontend`, `backend`, `api`, `admin`
+2. **Follow naming conventions**: lowercase with hyphens
+3. **Group related services**: Keep frontend and backend in same project
+4. **Use workbench.yaml**: Let the manifest manage your project structure
+
+### Security
+
+1. **Validate inputs**: Always use the CLI's built-in validation
+2. **Check permissions**: Ensure directories are writable
+3. **Review generated code**: Always review scaffolded code before deployment
+4. **Use secure names**: Avoid special characters and reserved names
+
+### Development Workflow
+
+1. **Start with `om init`**: Create a managed project
+2. **Add services incrementally**: Use `om add service` for each component
+3. **Use interactive mode for exploration**: Learn templates with `om add service`
+4. **Use direct mode for automation**: Script with parameters
+5. **List templates regularly**: Use `om list-templates` to discover options
 
 ---
 
-**Maintainer**: Jash Kahar  
-**Last Updated**: February 8, 2025
+**Next Steps**: Check out the [Architecture Guide](architecture.md) for technical details or the [Development Guide](development.md) for contributing to the project.

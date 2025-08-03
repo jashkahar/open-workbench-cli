@@ -61,7 +61,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	// Step 5: Run the scaffolder
 	servicePath := filepath.Join(projectName, serviceName)
-	if err := scaffoldService(templateName, servicePath); err != nil {
+	if err := scaffoldService(templateName, servicePath, false, projectName, "Open Workbench"); err != nil {
 		return err
 	}
 
@@ -228,25 +228,279 @@ func createProjectDirectories(projectName, serviceName string) error {
 	return nil
 }
 
+// collectTemplateParameters prompts the user for template-specific parameters
+func collectTemplateParameters(templateName string, isAddService bool, existingProjectName string, existingOwner string) (map[string]interface{}, error) {
+	// Load the template manifest
+	templateInfo, err := templating.GetTemplateInfo(templatesFS, templateName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load template: %w", err)
+	}
+
+	// Create a parameter processor
+	processor := templating.NewParameterProcessor(templateInfo.Manifest)
+	parameterValues := make(map[string]interface{})
+
+	// Pre-populate project-level parameters if provided
+	if existingProjectName != "" {
+		parameterValues["ProjectName"] = existingProjectName
+		processor.SetValue("ProjectName", existingProjectName)
+	}
+	if existingOwner != "" {
+		parameterValues["Owner"] = existingOwner
+		processor.SetValue("Owner", existingOwner)
+	}
+
+	// Get visible parameters organized by groups
+	parameterGroups := processor.GetParameterGroups()
+
+	// Collect all parameters silently first
+	var collectedParams []struct {
+		group string
+		name  string
+		value interface{}
+	}
+
+	// Collect parameters from each group
+	for groupName, params := range parameterGroups {
+		if len(params) > 0 {
+			// Skip project-level parameters when adding a service
+			if isAddService && groupName == "Project Details" {
+				continue
+			}
+
+			for _, param := range params {
+				// Skip project-level parameters when adding a service
+				if isAddService && (param.Name == "ProjectName" || param.Name == "Owner") {
+					continue
+				}
+
+				// Skip if we already have the value (for project-level params during init)
+				if !isAddService && (param.Name == "ProjectName" || param.Name == "Owner") {
+					if _, exists := parameterValues[param.Name]; exists {
+						continue
+					}
+				}
+
+				value, err := promptForParameter(param)
+				if err != nil {
+					return nil, err
+				}
+
+				// Store the value in both the processor and our result map
+				processor.SetValue(param.Name, value)
+				parameterValues[param.Name] = value
+
+				// Store for summary
+				collectedParams = append(collectedParams, struct {
+					group string
+					name  string
+					value interface{}
+				}{
+					group: groupName,
+					name:  param.Prompt,
+					value: value,
+				})
+			}
+		}
+	}
+
+	// Show summary of collected parameters
+	if len(collectedParams) > 0 {
+		fmt.Println("\n📋 Configuration Summary:")
+		fmt.Println("─" + strings.Repeat("─", 25))
+
+		currentGroup := ""
+		for _, param := range collectedParams {
+			if param.group != currentGroup {
+				currentGroup = param.group
+				fmt.Printf("\n%s:\n", currentGroup)
+			}
+
+			// Format the value for display
+			var displayValue string
+			switch v := param.value.(type) {
+			case bool:
+				if v {
+					displayValue = "✅ Yes"
+				} else {
+					displayValue = "❌ No"
+				}
+			case string:
+				displayValue = v
+			case []string:
+				displayValue = strings.Join(v, ", ")
+			default:
+				displayValue = fmt.Sprintf("%v", v)
+			}
+
+			fmt.Printf("  %s: %s\n", param.name, displayValue)
+		}
+		fmt.Println()
+	}
+
+	return parameterValues, nil
+}
+
+// promptForParameter prompts the user for a single parameter value
+func promptForParameter(param templating.Parameter) (interface{}, error) {
+	switch param.Type {
+	case "string":
+		return promptForStringParameter(param)
+	case "boolean":
+		return promptForBooleanParameter(param)
+	case "select":
+		return promptForSelectParameter(param)
+	case "multiselect":
+		return promptForMultiSelectParameter(param)
+	default:
+		return nil, fmt.Errorf("unsupported parameter type: %s", param.Type)
+	}
+}
+
+// promptForStringParameter prompts for a string parameter
+func promptForStringParameter(param templating.Parameter) (string, error) {
+	var value string
+	var defaultValue string
+	if param.Default != nil {
+		if str, ok := param.Default.(string); ok {
+			defaultValue = str
+		}
+	}
+
+	prompt := &survey.Input{
+		Message: param.Prompt,
+		Help:    param.HelpText,
+		Default: defaultValue,
+	}
+
+	var validators []survey.Validator
+	if param.Required {
+		validators = append(validators, survey.Required)
+	}
+
+	var err error
+	if len(validators) > 0 {
+		err = survey.AskOne(prompt, &value, survey.WithValidator(validators[0]))
+	} else {
+		err = survey.AskOne(prompt, &value)
+	}
+	if err != nil {
+		if errors.Is(err, terminal.InterruptErr) {
+			fmt.Println("\nOperation cancelled.")
+			os.Exit(0)
+		}
+		return "", fmt.Errorf("failed to get %s: %w", param.Name, err)
+	}
+
+	return value, nil
+}
+
+// promptForBooleanParameter prompts for a boolean parameter
+func promptForBooleanParameter(param templating.Parameter) (bool, error) {
+	var value bool
+	var defaultValue bool
+	if param.Default != nil {
+		if b, ok := param.Default.(bool); ok {
+			defaultValue = b
+		}
+	}
+
+	prompt := &survey.Confirm{
+		Message: param.Prompt,
+		Help:    param.HelpText,
+		Default: defaultValue,
+	}
+
+	err := survey.AskOne(prompt, &value)
+	if err != nil {
+		if errors.Is(err, terminal.InterruptErr) {
+			fmt.Println("\nOperation cancelled.")
+			os.Exit(0)
+		}
+		return false, fmt.Errorf("failed to get %s: %w", param.Name, err)
+	}
+
+	return value, nil
+}
+
+// promptForSelectParameter prompts for a select parameter
+func promptForSelectParameter(param templating.Parameter) (string, error) {
+	var value string
+	var defaultValue string
+	if param.Default != nil {
+		if str, ok := param.Default.(string); ok {
+			defaultValue = str
+		}
+	}
+
+	prompt := &survey.Select{
+		Message: param.Prompt,
+		Options: param.Options,
+		Help:    param.HelpText,
+		Default: defaultValue,
+	}
+
+	err := survey.AskOne(prompt, &value)
+	if err != nil {
+		if errors.Is(err, terminal.InterruptErr) {
+			fmt.Println("\nOperation cancelled.")
+			os.Exit(0)
+		}
+		return "", fmt.Errorf("failed to get %s: %w", param.Name, err)
+	}
+
+	return value, nil
+}
+
+// promptForMultiSelectParameter prompts for a multiselect parameter
+func promptForMultiSelectParameter(param templating.Parameter) ([]string, error) {
+	var value []string
+	var defaultValue []string
+	if param.Default != nil {
+		if strs, ok := param.Default.([]string); ok {
+			defaultValue = strs
+		}
+	}
+
+	prompt := &survey.MultiSelect{
+		Message: param.Prompt,
+		Options: param.Options,
+		Help:    param.HelpText,
+		Default: defaultValue,
+	}
+
+	err := survey.AskOne(prompt, &value)
+	if err != nil {
+		if errors.Is(err, terminal.InterruptErr) {
+			fmt.Println("\nOperation cancelled.")
+			os.Exit(0)
+		}
+		return nil, fmt.Errorf("failed to get %s: %w", param.Name, err)
+	}
+
+	return value, nil
+}
+
 // scaffoldService runs the scaffolding process for the service
-func scaffoldService(templateName, servicePath string) error {
+func scaffoldService(templateName, servicePath string, isAddService bool, existingProjectName string, existingOwner string) error {
 	// Load the template manifest
 	templateInfo, err := templating.GetTemplateInfo(templatesFS, templateName)
 	if err != nil {
 		return fmt.Errorf("failed to load template: %w", err)
 	}
 
-	// For now, we'll use default parameters
-	// In the future, this could prompt for template-specific parameters
-	parameterValues := map[string]interface{}{
-		"ProjectName":      filepath.Base(servicePath),
-		"Owner":            "Open Workbench",
-		"IncludeTesting":   true,
-		"TestingFramework": "Jest",
-		"IncludeTailwind":  true,
-		"IncludeDocker":    true,
-		"InstallDeps":      false, // Don't install deps during init
-		"InitGit":          false, // Don't init git during init
+	// Collect template parameters from the user
+	parameterValues, err := collectTemplateParameters(templateName, isAddService, existingProjectName, existingOwner)
+	if err != nil {
+		return fmt.Errorf("failed to collect template parameters: %w", err)
+	}
+
+	// Add some default values for backward compatibility
+	if _, exists := parameterValues["ProjectName"]; !exists {
+		parameterValues["ProjectName"] = filepath.Base(servicePath)
+	}
+	if _, exists := parameterValues["Owner"]; !exists {
+		parameterValues["Owner"] = "Open Workbench"
 	}
 
 	// Create a template processor
@@ -312,8 +566,8 @@ func printSuccessMessage(projectName, serviceName string) {
 	fmt.Println("🚀 Next steps:")
 	fmt.Printf("  cd %s\n", projectName)
 	fmt.Println("  om add service  # Add more services to your project")
-	fmt.Println("  om run          # Run your project (when implemented)")
-	fmt.Println("  om deploy       # Deploy your project (when implemented)")
+	// fmt.Println("  om run          # Run your project (when implemented)")
+	// fmt.Println("  om deploy       # Deploy your project (when implemented)")
 }
 
 // isValidProjectName validates that a project/service name follows the required format
