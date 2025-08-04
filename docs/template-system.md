@@ -11,6 +11,7 @@ The Open Workbench CLI uses a sophisticated dynamic template system that allows 
 - **Post-Scaffolding Actions**: Automatic cleanup and setup after project creation
 - **Parameter Groups**: Organized parameter collection for better UX
 - **Multiple Parameter Types**: String, boolean, select, and multiselect inputs
+- **Smart Command Integration**: Works seamlessly with the smart command system
 
 ## 📁 Template Structure
 
@@ -108,7 +109,7 @@ Yes/No questions with default values.
   "prompt": "Include testing framework?",
   "type": "boolean",
   "default": true,
-  "helpText": "This will add Jest or Vitest configuration to your project."
+  "helpText": "Add Jest or Vitest for testing your components."
 }
 ```
 
@@ -119,46 +120,32 @@ Single-choice dropdown with predefined options.
 ```json
 {
   "name": "TestingFramework",
-  "prompt": "Which testing framework?",
+  "prompt": "Which testing framework would you like?",
   "type": "select",
-  "default": "Jest",
   "options": ["Jest", "Vitest"],
+  "default": "Jest",
   "condition": "IncludeTesting == true"
 }
 ```
 
 #### 4. Multiselect Parameters
 
-Multiple-choice selection.
+Multiple-choice selection for complex configurations.
 
 ```json
 {
   "name": "Features",
   "prompt": "Which features would you like to include?",
   "type": "multiselect",
-  "options": ["Authentication", "Database", "API", "UI Components"],
-  "default": ["API"]
+  "options": ["Authentication", "Database", "API", "Admin Panel"],
+  "default": ["Authentication"],
+  "helpText": "Select all features you want in your application."
 }
 ```
 
-### Parameter Properties
-
-| Property     | Type    | Required | Description                                           |
-| ------------ | ------- | -------- | ----------------------------------------------------- |
-| `name`       | string  | Yes      | Unique parameter identifier                           |
-| `prompt`     | string  | Yes      | User-facing question                                  |
-| `type`       | string  | Yes      | Parameter type (string, boolean, select, multiselect) |
-| `group`      | string  | No       | Group for organizing parameters                       |
-| `required`   | boolean | No       | Whether parameter is required (default: false)        |
-| `default`    | any     | No       | Default value                                         |
-| `options`    | array   | No       | Available options for select/multiselect              |
-| `condition`  | string  | No       | Conditional visibility rule                           |
-| `helpText`   | string  | No       | Additional help text                                  |
-| `validation` | object  | No       | Validation rules                                      |
-
 ### Parameter Groups
 
-Parameters can be organized into groups for better UX:
+Organize parameters into logical groups for better UX:
 
 ```json
 {
@@ -166,111 +153,36 @@ Parameters can be organized into groups for better UX:
     {
       "name": "ProjectName",
       "group": "Project Details",
-      "type": "string"
+      "type": "string",
+      "required": true
     },
     {
       "name": "Owner",
       "group": "Project Details",
-      "type": "string"
+      "type": "string",
+      "required": true
     },
     {
       "name": "IncludeTesting",
-      "group": "Testing & Quality",
-      "type": "boolean"
-    },
-    {
-      "name": "IncludeDocker",
-      "group": "Deployment",
-      "type": "boolean"
-    }
-  ]
-}
-```
-
-## 🔄 Conditional Logic
-
-### Condition Syntax
-
-The template system supports simple conditional logic:
-
-#### Equality Conditions
-
-```json
-{
-  "condition": "IncludeTesting == true"
-}
-```
-
-#### Inequality Conditions
-
-```json
-{
-  "condition": "TestingFramework != 'Jest'"
-}
-```
-
-#### String Comparisons
-
-```json
-{
-  "condition": "Framework == 'React'"
-}
-```
-
-### Conditional Parameters
-
-Parameters can be conditionally shown based on other parameter values:
-
-```json
-{
-  "parameters": [
-    {
-      "name": "IncludeTesting",
-      "prompt": "Include testing framework?",
+      "group": "Development Tools",
       "type": "boolean",
       "default": true
     },
     {
-      "name": "TestingFramework",
-      "prompt": "Which testing framework?",
-      "type": "select",
-      "options": ["Jest", "Vitest"],
-      "condition": "IncludeTesting == true"
+      "name": "IncludeDocker",
+      "group": "Deployment",
+      "type": "boolean",
+      "default": true
     }
   ]
 }
 ```
 
-### Conditional Files
+### Parameter Validation
 
-Files can be conditionally included or excluded:
+#### Regex Validation
 
-```json
-{
-  "postScaffold": {
-    "filesToDelete": [
-      {
-        "path": "jest.config.js",
-        "condition": "TestingFramework != 'Jest'"
-      },
-      {
-        "path": "vitest.config.js",
-        "condition": "TestingFramework != 'Vitest'"
-      },
-      {
-        "path": "tests/",
-        "condition": "IncludeTesting == false"
-      }
-    ]
-  }
-}
-```
-
-## ✅ Validation System
-
-### String Validation
-
-String parameters can have custom validation rules:
+Use regex patterns for string validation:
 
 ```json
 {
@@ -283,60 +195,80 @@ String parameters can have custom validation rules:
 }
 ```
 
-### Built-in Validations
+#### Required Field Validation
 
-The system provides several built-in validations:
-
-#### Project Name Validation
+Ensure critical parameters are provided:
 
 ```json
 {
+  "name": "ProjectName",
+  "type": "string",
+  "required": true,
+  "helpText": "This is required for project setup."
+}
+```
+
+#### Custom Validation
+
+Implement custom validation logic:
+
+```json
+{
+  "name": "Port",
+  "type": "string",
   "validation": {
-    "regex": "^[a-z0-9-]+$",
-    "errorMessage": "Project name can only contain lowercase letters, numbers, and hyphens."
+    "regex": "^[0-9]+$",
+    "errorMessage": "Port must be a number.",
+    "custom": {
+      "min": 1024,
+      "max": 65535,
+      "message": "Port must be between 1024 and 65535."
+    }
   }
 }
 ```
 
-#### Email Validation
+## 🔄 Conditional Logic
+
+### Parameter Conditions
+
+Show/hide parameters based on other parameter values:
 
 ```json
 {
-  "validation": {
-    "regex": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
-    "errorMessage": "Please enter a valid email address."
-  }
+  "parameters": [
+    {
+      "name": "IncludeTesting",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "name": "TestingFramework",
+      "type": "select",
+      "options": ["Jest", "Vitest"],
+      "condition": "IncludeTesting == true"
+    },
+    {
+      "name": "IncludeE2E",
+      "type": "boolean",
+      "default": false,
+      "condition": "IncludeTesting == true"
+    }
+  ]
 }
 ```
 
-#### URL Validation
+### File Conditions
 
-```json
-{
-  "validation": {
-    "regex": "^https?://.+",
-    "errorMessage": "Please enter a valid URL starting with http:// or https://"
-  }
-}
-```
-
-## 🔧 Post-Scaffolding Actions
-
-### File Deletion
-
-Remove files based on conditions:
+Generate or delete files based on parameter values:
 
 ```json
 {
   "postScaffold": {
     "filesToDelete": [
       {
-        "path": "jest.config.js",
-        "condition": "TestingFramework != 'Jest'"
-      },
-      {
-        "path": "Dockerfile",
-        "condition": "IncludeDocker == false"
+        "path": "src/tests/App.test.tsx",
+        "condition": "IncludeTesting == false"
       },
       {
         "path": "tailwind.config.js",
@@ -347,9 +279,92 @@ Remove files based on conditions:
 }
 ```
 
+### Command Conditions
+
+Execute commands conditionally:
+
+```json
+{
+  "postScaffold": {
+    "commands": [
+      {
+        "command": "npm install",
+        "description": "Installing dependencies...",
+        "condition": "InstallDeps == true"
+      },
+      {
+        "command": "git init",
+        "description": "Initializing git repository...",
+        "condition": "InitGit == true"
+      }
+    ]
+  }
+}
+```
+
+## 🚀 Post-Scaffolding Actions
+
+### File Operations
+
+#### Delete Files
+
+Remove files based on conditions:
+
+```json
+{
+  "postScaffold": {
+    "filesToDelete": [
+      {
+        "path": "unused-config.js",
+        "condition": "IncludeFeature == false"
+      },
+      {
+        "path": "src/components/Example.tsx",
+        "condition": "IncludeExamples == false"
+      }
+    ]
+  }
+}
+```
+
+#### Rename Files
+
+Rename files based on parameters:
+
+```json
+{
+  "postScaffold": {
+    "filesToRename": [
+      {
+        "from": "src/App.tsx",
+        "to": "src/{{ProjectName}}.tsx",
+        "condition": "CustomAppName == true"
+      }
+    ]
+  }
+}
+```
+
 ### Command Execution
 
-Run commands after scaffolding:
+#### Install Dependencies
+
+```json
+{
+  "postScaffold": {
+    "commands": [
+      {
+        "command": "npm install",
+        "description": "Installing dependencies...",
+        "condition": "InstallDeps == true",
+        "cwd": "."
+      }
+    ]
+  }
+}
+```
+
+#### Initialize Git
 
 ```json
 {
@@ -357,114 +372,52 @@ Run commands after scaffolding:
     "commands": [
       {
         "command": "git init",
-        "description": "Initializing Git repository...",
+        "description": "Initializing git repository...",
         "condition": "InitGit == true"
       },
       {
-        "command": "npm install",
-        "description": "Installing dependencies...",
-        "condition": "InstallDeps == true"
+        "command": "git add .",
+        "description": "Adding files to git...",
+        "condition": "InitGit == true"
       },
       {
-        "command": "npm run test",
-        "description": "Running tests...",
-        "condition": "IncludeTesting == true"
+        "command": "git commit -m \"Initial commit\"",
+        "description": "Creating initial commit...",
+        "condition": "InitGit == true"
       }
     ]
   }
 }
 ```
 
-### Optional Git Initialization
-
-The `InitGit` parameter allows users to control whether git initialization occurs:
+#### Custom Scripts
 
 ```json
 {
-  "name": "InitGit",
-  "prompt": "Initialize Git repository?",
-  "group": "Final Steps",
-  "type": "boolean",
-  "default": true,
-  "helpText": "This will run 'git init' to initialize a new Git repository."
+  "postScaffold": {
+    "commands": [
+      {
+        "command": "echo 'Project {{ProjectName}} created successfully!'",
+        "description": "Displaying success message...",
+        "condition": "ShowMessage == true"
+      }
+    ]
+  }
 }
-```
-
-This parameter is available in CLI mode via the `--no-git` flag.
-
-## 📝 Template File Processing
-
-### Template Variables
-
-Template files can use Go template syntax for variable substitution:
-
-#### Basic Variables
-
-```go
-{{.ProjectName}}
-{{.Owner}}
-{{.IncludeTesting}}
-```
-
-#### Conditional Content
-
-```go
-{{if .IncludeTesting}}
-import { render, screen } from '@testing-library/react';
-{{end}}
-```
-
-#### Conditional Files
-
-```go
-{{if .IncludeDocker}}
-# Dockerfile content
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 3000
-CMD ["npm", "start"]
-{{end}}
-```
-
-#### Template Functions
-
-The system provides several template functions:
-
-```go
-{{eq .Framework "React"}}     // Equality comparison
-{{ne .Framework "Vue"}}       // Inequality comparison
-{{contains .Features "API"}}  // Array contains check
-{{lower .ProjectName}}        // Convert to lowercase
-{{upper .ProjectName}}        // Convert to uppercase
-{{title .ProjectName}}        // Title case
-{{trim .ProjectName}}         // Trim whitespace
-```
-
-### File Name Templates
-
-File names can also be templated:
-
-```
-{{if .IncludeTesting}}tests/{{end}}App.test.tsx
-{{if .IncludeDocker}}Dockerfile{{end}}
-{{lower .ProjectName}}-config.js
 ```
 
 ## 🎨 Template Examples
 
-### Next.js Template
+### Next.js Full-Stack Template
 
 ```json
 {
-  "name": "Next.js Production-Grade",
-  "description": "A fully-featured Next.js application with testing, linting, and optional CI/CD.",
+  "name": "Next.js Full-Stack",
+  "description": "Production-ready Next.js application with TypeScript, testing, and Docker",
   "parameters": [
     {
       "name": "ProjectName",
-      "prompt": "Project Name:",
+      "prompt": "What is your project name?",
       "group": "Project Details",
       "type": "string",
       "required": true,
@@ -475,25 +428,25 @@ File names can also be templated:
     },
     {
       "name": "Owner",
-      "prompt": "Project Owner:",
+      "prompt": "Who is the project owner?",
       "group": "Project Details",
       "type": "string",
       "required": true
     },
     {
       "name": "IncludeTesting",
-      "prompt": "Include a testing framework?",
-      "group": "Testing & Quality",
+      "prompt": "Include testing framework?",
+      "group": "Development Tools",
       "type": "boolean",
       "default": true
     },
     {
       "name": "TestingFramework",
       "prompt": "Which testing framework?",
-      "group": "Testing & Quality",
+      "group": "Development Tools",
       "type": "select",
-      "default": "Jest",
       "options": ["Jest", "Vitest"],
+      "default": "Jest",
       "condition": "IncludeTesting == true"
     },
     {
@@ -509,33 +462,13 @@ File names can also be templated:
       "group": "Styling",
       "type": "boolean",
       "default": true
-    },
-    {
-      "name": "InstallDeps",
-      "prompt": "Install dependencies after setup?",
-      "group": "Final Steps",
-      "type": "boolean",
-      "default": true,
-      "helpText": "This will run 'npm install' automatically for you."
     }
   ],
   "postScaffold": {
     "filesToDelete": [
       {
-        "path": "jest.config.js",
-        "condition": "TestingFramework != 'Jest'"
-      },
-      {
-        "path": "vitest.config.js",
-        "condition": "TestingFramework != 'Vitest'"
-      },
-      {
-        "path": "tests/",
-        "condition": "IncludeTesting == false"
-      },
-      {
-        "path": "Dockerfile",
-        "condition": "IncludeDocker == false"
+        "path": "src/app/globals.css",
+        "condition": "IncludeTailwind == false"
       },
       {
         "path": "tailwind.config.js",
@@ -548,12 +481,69 @@ File names can also be templated:
     ],
     "commands": [
       {
-        "command": "git init",
-        "description": "Initializing Git repository..."
+        "command": "npm install",
+        "description": "Installing dependencies...",
+        "condition": "InstallDeps == true"
       },
       {
-        "command": "npm install",
-        "description": "Installing project dependencies...",
+        "command": "git init",
+        "description": "Initializing git repository...",
+        "condition": "InitGit == true"
+      }
+    ]
+  }
+}
+```
+
+### FastAPI Basic Template
+
+```json
+{
+  "name": "FastAPI Basic",
+  "description": "FastAPI backend with automatic API documentation",
+  "parameters": [
+    {
+      "name": "ProjectName",
+      "prompt": "What is your project name?",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "Owner",
+      "prompt": "Who is the project owner?",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "Database",
+      "prompt": "Which database would you like to use?",
+      "type": "select",
+      "options": ["SQLite", "PostgreSQL", "MongoDB"],
+      "default": "SQLite"
+    },
+    {
+      "name": "IncludeAuth",
+      "prompt": "Include authentication?",
+      "type": "boolean",
+      "default": true
+    }
+  ],
+  "postScaffold": {
+    "filesToDelete": [
+      {
+        "path": "src/auth/",
+        "condition": "IncludeAuth == false"
+      }
+    ],
+    "commands": [
+      {
+        "command": "python -m venv venv",
+        "description": "Creating virtual environment...",
+        "condition": "CreateVenv == true"
+      },
+      {
+        "command": "pip install -r requirements.txt",
+        "description": "Installing Python dependencies...",
         "condition": "InstallDeps == true"
       }
     ]
@@ -561,138 +551,219 @@ File names can also be templated:
 }
 ```
 
-### FastAPI Template
+## 🔧 Advanced Features
+
+### Template Inheritance
+
+Create base templates that can be extended:
 
 ```json
 {
-  "name": "FastAPI Basic",
-  "description": "A FastAPI backend template with automatic API documentation.",
+  "name": "Base Template",
+  "description": "Base template with common configurations",
   "parameters": [
     {
       "name": "ProjectName",
-      "prompt": "Project Name:",
       "type": "string",
-      "required": true,
-      "validation": {
-        "regex": "^[a-z0-9-]+$",
-        "errorMessage": "Project name can only contain lowercase letters, numbers, and hyphens."
-      }
-    },
-    {
-      "name": "IncludeDatabase",
-      "prompt": "Include database support?",
-      "type": "boolean",
-      "default": false
-    },
-    {
-      "name": "DatabaseType",
-      "prompt": "Which database?",
-      "type": "select",
-      "options": ["PostgreSQL", "SQLite", "MySQL"],
-      "condition": "IncludeDatabase == true"
+      "required": true
     }
   ],
+  "extends": "base-template"
+}
+```
+
+### Dynamic File Generation
+
+Generate files based on parameter values:
+
+```json
+{
+  "parameters": [
+    {
+      "name": "Database",
+      "type": "select",
+      "options": ["SQLite", "PostgreSQL", "MongoDB"]
+    }
+  ],
+  "files": [
+    {
+      "path": "src/database/{{Database}}.py",
+      "condition": "Database != null"
+    }
+  ]
+}
+```
+
+### Environment Configuration
+
+Generate environment files:
+
+```json
+{
   "postScaffold": {
-    "filesToDelete": [
+    "envFiles": [
       {
-        "path": "database/",
-        "condition": "IncludeDatabase == false"
-      }
-    ],
-    "commands": [
-      {
-        "command": "python -m venv venv",
-        "description": "Creating virtual environment..."
-      },
-      {
-        "command": "pip install -r requirements.txt",
-        "description": "Installing dependencies..."
+        "path": ".env.example",
+        "template": "env.example.tmpl",
+        "condition": "IncludeEnv == true"
       }
     ]
   }
 }
 ```
 
-## 🛠️ Best Practices
+## 🧪 Testing Templates
+
+### Template Validation
+
+Test your templates before using them:
+
+```bash
+# List all templates
+om list-templates
+
+# Test template processing
+go test ./internal/templating/ -v
+
+# Test specific template
+go test ./internal/templating/ -run TestProcessTemplate
+```
+
+### Template Testing Structure
+
+```go
+func TestTemplateProcessing(t *testing.T) {
+    tests := []struct {
+        name     string
+        template string
+        params   map[string]interface{}
+        expect   string
+    }{
+        {
+            name:     "basic template",
+            template: "Hello {{ProjectName}}!",
+            params:   map[string]interface{}{"ProjectName": "World"},
+            expect:   "Hello World!",
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result := processTemplate(tt.template, tt.params)
+            if result != tt.expect {
+                t.Errorf("expected %s, got %s", tt.expect, result)
+            }
+        })
+    }
+}
+```
+
+## 🔒 Security Considerations
+
+### Template Security
+
+- **Validate all inputs**: Never trust user input
+- **Sanitize file paths**: Prevent path traversal attacks
+- **Validate template names**: Ensure safe template names
+- **Check file operations**: Validate all file operations
+
+### Security Best Practices
+
+```json
+{
+  "parameters": [
+    {
+      "name": "ProjectName",
+      "type": "string",
+      "validation": {
+        "regex": "^[a-z0-9-]+$",
+        "errorMessage": "Invalid project name"
+      }
+    }
+  ],
+  "security": {
+    "allowedPaths": ["./src", "./public"],
+    "forbiddenPatterns": ["../", "..\\", "javascript:"]
+  }
+}
+```
+
+## 🚀 Performance Optimization
+
+### Template Caching
+
+Templates are cached for better performance:
+
+```go
+// Template caching
+var templateCache = make(map[string]*Template)
+
+func getTemplate(name string) (*Template, error) {
+    if cached, exists := templateCache[name]; exists {
+        return cached, nil
+    }
+    // Load and cache template
+}
+```
+
+### Lazy Loading
+
+Load templates only when needed:
+
+```go
+func loadTemplate(name string) (*Template, error) {
+    // Load template from embedded filesystem
+    // Parse template manifest
+    // Validate template structure
+    return template, nil
+}
+```
+
+## 📚 Best Practices
 
 ### Template Design
 
-1. **Clear Parameter Names**: Use descriptive, consistent parameter names
-2. **Logical Grouping**: Group related parameters together
-3. **Sensible Defaults**: Provide helpful default values
-4. **Comprehensive Validation**: Validate user input appropriately
-5. **Clear Help Text**: Provide helpful guidance for complex parameters
+1. **Clear Naming**: Use descriptive template names
+2. **Comprehensive Documentation**: Document all parameters
+3. **Sensible Defaults**: Provide good default values
+4. **Progressive Enhancement**: Start simple, add complexity
+5. **Error Handling**: Provide clear error messages
 
-### Conditional Logic
+### Parameter Design
 
-1. **Simple Conditions**: Keep conditions simple and readable
-2. **Consistent Naming**: Use consistent parameter names in conditions
-3. **Test Conditions**: Thoroughly test conditional logic
-4. **Document Dependencies**: Document parameter dependencies
+1. **Logical Grouping**: Group related parameters
+2. **Clear Prompts**: Use descriptive prompts
+3. **Helpful Validation**: Provide useful error messages
+4. **Conditional Logic**: Use conditions sparingly
+5. **Default Values**: Provide sensible defaults
 
-### File Organization
+### Post-Scaffolding Actions
 
-1. **Logical Structure**: Organize files logically
-2. **Conditional Files**: Use conditional file inclusion sparingly
-3. **Clear Naming**: Use clear, descriptive file names
-4. **Minimal Dependencies**: Minimize template dependencies
-
-### Validation Rules
-
-1. **Appropriate Validation**: Validate only what's necessary
-2. **Clear Error Messages**: Provide helpful error messages
-3. **Test Validation**: Test validation rules thoroughly
-4. **Common Patterns**: Use common validation patterns
-
-## 🔍 Debugging Templates
-
-### Common Issues
-
-1. **Template Not Found**: Check template directory structure
-2. **Invalid JSON**: Validate template.json syntax
-3. **Missing Parameters**: Ensure all required parameters are defined
-4. **Condition Errors**: Check condition syntax and parameter names
-5. **File Not Found**: Verify file paths in template
-
-### Debug Tools
-
-1. **Template Validation**: Use the CLI's built-in validation
-2. **Parameter Testing**: Test parameter collection separately
-3. **File Processing**: Check file processing step by step
-4. **Condition Testing**: Test conditional logic independently
-
-### Debug Commands
-
-```bash
-# Validate template structure
-om validate template-name
-
-# Test parameter collection
-om test-params template-name
-
-# Preview template output
-om preview template-name --params '{"ProjectName":"test"}'
-```
+1. **Minimal Commands**: Keep commands simple
+2. **Clear Descriptions**: Describe what each command does
+3. **Error Handling**: Handle command failures gracefully
+4. **Conditional Execution**: Use conditions appropriately
+5. **User Feedback**: Provide clear progress messages
 
 ## 🔮 Future Enhancements
 
 ### Planned Features
 
-1. **Advanced Conditions**: More sophisticated conditional logic
-2. **Template Inheritance**: Template composition and inheritance
-3. **Custom Validators**: User-defined validation functions
-4. **Template Versioning**: Template version management
-5. **Template Marketplace**: External template distribution
-
-### Extension Points
-
-1. **Plugin System**: Custom template processors
-2. **Custom Functions**: User-defined template functions
-3. **External Data**: Fetch data from external sources
+1. **Template Marketplace**: Community template sharing
+2. **Template Versioning**: Version control for templates
+3. **Advanced Conditions**: Complex conditional logic
 4. **Template Composition**: Combine multiple templates
+5. **Plugin System**: Extensible template system
+
+### Template Ecosystem
+
+1. **Community Templates**: User-contributed templates
+2. **Template Validation**: Automated template testing
+3. **Template Documentation**: Comprehensive documentation
+4. **Template Examples**: Real-world examples
+5. **Template Support**: Community support for templates
 
 ---
 
-**Last Updated**: 07/29/2025  
-**Version**: v0.5.0  
-**Maintainers**: [Project Maintainers]
+**Maintainer**: Jash Kahar  
+**Last Updated**: August 3, 2025

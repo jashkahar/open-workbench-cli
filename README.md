@@ -1,10 +1,10 @@
 ﻿# Open Workbench Platform
 
-A command-line tool for quickly scaffolding modern web applications with pre-configured templates and best practices.
+A simple command-line tool that helps you create modern web applications quickly. It provides ready-to-use templates with best practices so you can focus on building your app instead of setting up the basics.
 
 ## What is it?
 
-Open Workbench Platform helps developers bootstrap new projects using carefully crafted templates. It eliminates repetitive setup and ensures you start with a solid foundation following industry best practices.
+Open Workbench Platform takes the hassle out of starting new projects. Instead of spending hours setting up configurations, installing dependencies, and creating boilerplate code, you can get a fully working application in minutes.
 
 ## Quick Start
 
@@ -25,13 +25,13 @@ scoop install om
 ### Basic Usage
 
 ```bash
-# Initialize a new project
+# Start a new project
 om init
 
 # Add a service to your project
 om add service
 
-# List available templates
+# See what templates are available
 om list-templates
 ```
 
@@ -48,20 +48,30 @@ om add service --name backend --template fastapi-basic
 om add service --name app --template react-typescript
 ```
 
+## What You Get
+
+- **Ready-to-run applications** with all dependencies and configurations
+- **Production-ready templates** with testing, Docker, and deployment setup
+- **Smart command system** that adapts to how you want to work
+- **Multiple frameworks** including React, Next.js, FastAPI, Express, and Vue
+- **Docker support** for easy deployment and development
+
 ## Available Templates
 
-- **nextjs-full-stack**: Production-ready Next.js with TypeScript, testing, and Docker
+- **nextjs-full-stack**: Complete Next.js app with TypeScript and testing
 - **fastapi-basic**: FastAPI backend with automatic API documentation
 - **react-typescript**: Modern React app with Vite and TypeScript
 - **express-api**: Node.js Express API with TypeScript
-- **vue-nuxt**: Vue.js Nuxt application with SSR
+- **vue-nuxt**: Vue.js Nuxt application
+- **nginx-gateway**: Nginx reverse proxy for microservices
+- **redis-cache**: Redis cache service
 
 ## Documentation
 
-For detailed information, see the [docs/](docs/) directory:
+For detailed guides and technical information, see the [docs/](docs/) directory:
 
 - [User Guide](docs/user-guide.md) - Complete usage guide
-- [Architecture](docs/architecture.md) - System design and components
+- [Architecture](docs/architecture.md) - How the system works
 - [Development](docs/development.md) - Contributing and development setup
 - [Template System](docs/template-system.md) - Creating custom templates
 

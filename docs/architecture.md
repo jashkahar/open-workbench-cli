@@ -11,8 +11,8 @@ This document provides a comprehensive overview of the Open Workbench CLI archit
 │   User Input    │    │   Command       │    │   Template      │    │   Output        │
 │                 │    │   System        │    │   Processing    │    │                 │
 │ • CLI Args      │───▶│ • Cobra        │───▶│ • Discovery     │───▶│ • Project       │
-│ • TUI           │    │ • Security      │    │ • Parameters    │    │ • Files         │
-│ • Interactive   │    │ • Validation    │    │ • Processing    │    │ • Commands      │
+│ • Interactive   │    │ • Security      │    │ • Parameters    │    │ • Files         │
+│ • Smart Mode    │    │ • Validation    │    │ • Processing    │    │ • Docker        │
 └─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
@@ -20,19 +20,22 @@ This document provides a comprehensive overview of the Open Workbench CLI archit
 
 #### 1. Command System (`cmd/`)
 
-**Purpose**: Modern CLI framework with security and testing
+**Purpose**: Modern CLI framework with security, testing, and smart mode detection
 
 **Responsibilities**:
 
 - Provide structured command hierarchy using Cobra
-- Implement security validation for all inputs
-- Handle command routing and execution
+- Implement comprehensive security validation for all inputs
+- Handle smart mode detection (interactive/direct/partial)
 - Manage project initialization with manifests
+- Generate Docker Compose configurations
 
 **Key Components**:
 
 - **Root Command** (`cmd/root.go`): Main CLI setup and command registration
 - **Init Command** (`cmd/init.go`): Project initialization with `workbench.yaml` manifests
+- **Add Service** (`cmd/add_service.go`): Smart service addition with mode detection
+- **Compose Command** (`cmd/compose.go`): Docker Compose generation
 - **Security** (`cmd/security.go`): Comprehensive security utilities and validation
 - **Types** (`cmd/types.go`): YAML manifest type definitions
 
@@ -40,9 +43,18 @@ This document provides a comprehensive overview of the Open Workbench CLI archit
 
 - `Execute()`: Main CLI execution with embedded filesystem
 - `runInit()`: Project initialization workflow
+- `runAddService()`: Smart service addition with mode detection
+- `runCompose()`: Docker Compose generation
 - `ValidateAndSanitizeName()`: Input validation and sanitization
 - `ValidateAndSanitizePath()`: Path security validation
 - `CheckForSuspiciousPatterns()`: Malicious pattern detection
+
+**Smart Command System**:
+
+- **Mode Detection**: Automatically switches between interactive and direct modes
+- **Interactive Mode**: No parameters → prompts for all details
+- **Direct Mode**: All parameters provided → uses provided parameters
+- **Partial Mode**: Some parameters → uses provided, prompts for missing
 
 **Security Features**:
 
@@ -67,461 +79,380 @@ This document provides a comprehensive overview of the Open Workbench CLI archit
 - `main()`: Application entry point with embedded filesystem
 - `embed` directive: Embed templates into binary
 
-#### 3. Terminal User Interface (`tui.go`)
+#### 3. Compose System (`internal/compose/`)
 
-**Purpose**: Interactive template selection interface
+**Purpose**: Docker Compose generation and orchestration
 
 **Responsibilities**:
 
-- Present available templates in a user-friendly interface
-- Handle user navigation and selection
-- Integrate with template discovery system
-- Provide visual feedback during selection
+- Parse `workbench.yaml` project manifests
+- Generate production-ready Docker Compose configurations
+- Create environment files with secure defaults
+- Validate Docker prerequisites
 
 **Key Components**:
 
-- `model`: TUI state management
-- `item`: Template representation in the list
-- `runTUI()`: Main TUI execution function
-
-**Dependencies**:
-
-- Bubble Tea for TUI framework
-- Template discovery system
-
-#### 4. CLI Mode (`main.go`)
-
-**Purpose**: Non-interactive command-line interface
-
-**Responsibilities**:
-
-- Parse command-line arguments and flags
-- Validate required parameters
-- Execute scaffolding without user interaction
-- Provide comprehensive help and error messages
+- **Generator** (`generator.go`): Docker Compose configuration generation
+- **Prerequisites** (`prerequisites.go`): Docker environment validation
+- **Types** (`types.go`): Compose-specific type definitions
 
 **Key Functions**:
 
-- `runCLICreate()`: Main CLI mode execution
-- Flag parsing and validation
-- Parameter value mapping from flags
-- Error handling with help guidance
+- `Generate()`: Create complete docker-compose.yml
+- `GenerateEnvFile()`: Generate environment variables
+- `CheckAllPrerequisites()`: Validate Docker installation
+- `SaveDockerCompose()`: Write configuration files
 
 **Features**:
 
-- Support for all template options via flags
-- Optional git initialization (`--no-git`)
-- Optional dependency installation (`--no-install-deps`)
-- Conditional feature flags (`--no-testing`, `--no-tailwind`, etc.)
-- Comprehensive help system with examples
+- Service networking with proper isolation
+- Environment variable management with secure defaults
+- Volume mounting for development and production
+- Health checks for service monitoring
+- Multi-stage builds for optimized images
 
-#### 5. Dynamic Templating System (`internal/templating/`)
+#### 4. Templating System (`internal/templating/`)
 
-##### Discovery (`discovery.go`)
-
-**Purpose**: Template discovery and validation
+**Purpose**: Dynamic template processing with conditional logic
 
 **Responsibilities**:
 
-- Scan embedded filesystem for available templates
-- Load and parse template manifests
-- Validate template structure and parameters
-- Provide template metadata
-
-**Key Functions**:
-
-- `DiscoverTemplates()`: Find all available templates
-- `GetTemplateInfo()`: Load specific template information
-- `validateTemplateManifest()`: Validate template structure
-
-##### Parameters (`parameters.go`)
-
-**Purpose**: Parameter collection and validation
-
-**Responsibilities**:
-
-- Collect user input for template parameters
-- Validate parameter values against rules
-- Handle conditional parameter logic
-- Provide parameter grouping and organization
-
-**Key Functions**:
-
-- `collectParameters()`: Interactive parameter collection
-- `validateParameter()`: Parameter validation
-- `evaluateCondition()`: Conditional logic evaluation
-
-##### Processor (`processor.go`)
-
-**Purpose**: Template processing and file operations
-
-**Responsibilities**:
-
-- Process template files with parameter substitution
-- Handle file creation and directory structure
-- Execute post-scaffolding actions
-- Manage template file operations
-
-**Key Functions**:
-
-- `ScaffoldProject()`: Main template processing
-- `processTemplateFile()`: Individual file processing
-- `executeCommand()`: Post-scaffolding command execution
-- `deleteFiles()`: Conditional file deletion
-
-#### 6. Security System (`cmd/security.go`)
-
-**Purpose**: Enterprise-grade security validation
-
-**Responsibilities**:
-
-- Validate and sanitize all user inputs
-- Prevent path traversal attacks
-- Detect malicious patterns
-- Ensure cross-platform security
+- Template discovery and validation
+- Parameter collection and validation
+- Conditional file generation
+- Post-scaffolding actions
 
 **Key Components**:
 
-- **SecurityConfig**: Configurable security settings
-- **ValidateAndSanitizePath()**: Path security validation
-- **ValidateAndSanitizeName()**: Name validation and sanitization
-- **CheckForSuspiciousPatterns()**: Malicious pattern detection
-- **ValidateDirectorySafety()**: Directory safety checks
+- **Discovery** (`discovery.go`): Template discovery and validation
+- **Parameters** (`parameters.go`): Parameter processing and validation
+- **Processor** (`processor.go`): Template processing and file operations
+- **Progress** (`progress.go`): Progress tracking and user feedback
 
-**Security Features**:
+**Key Functions**:
+
+- `DiscoverTemplates()`: Find and validate available templates
+- `CollectParameters()`: Interactive parameter collection
+- `ProcessTemplate()`: Template processing with conditional logic
+- `ExecutePostScaffold()`: Post-scaffolding actions
+
+**Advanced Features**:
+
+- Conditional parameter display based on other parameters
+- Conditional file generation and deletion
+- Post-scaffolding commands and actions
+- Parameter validation with regex patterns
+- Parameter grouping for better UX
+
+## 🔒 Security Architecture
+
+### Input Validation System
+
+**Purpose**: Comprehensive security validation for all user inputs
+
+**Components**:
+
+- **Path Validation**: Prevents path traversal attacks
+- **Name Validation**: Validates project and service names
+- **Pattern Detection**: Identifies malicious patterns
+- **Cross-Platform Security**: Handles Windows and Unix security
+
+**Validation Rules**:
 
 ```go
 // Path traversal protection
-if strings.Contains(path, "..") {
-    return "", fmt.Errorf("path traversal not allowed")
+if strings.Contains(name, "../") || strings.Contains(name, "..\\") {
+    return errors.New("path traversal not allowed")
 }
 
 // Malicious pattern detection
 suspiciousPatterns := []string{
-    "javascript:", "data:", "vbscript:",
-    "onload=", "onerror=", "<script",
-    "eval(", "exec(", "system(",
+    "javascript:", "data:", "vbscript:", "onload=", "onerror=",
+    "eval(", "setTimeout(", "setInterval(", "document.cookie",
+}
+
+// Windows reserved names
+windowsReserved := []string{"con", "prn", "aux", "nul", "com1", "com2"}
+```
+
+### Directory Safety System
+
+**Purpose**: Ensure safe directory operations
+
+**Features**:
+
+- Directory permission validation
+- Symbolic link detection
+- Accessibility checks
+- Empty directory validation
+
+**Safety Checks**:
+
+```go
+func ValidateDirectorySafety(path string) error {
+    // Check if directory exists and is accessible
+    // Validate permissions
+    // Check for symbolic links
+    // Ensure directory is writable
 }
 ```
 
-#### 7. Testing Infrastructure
+### Template Security
 
-**Purpose**: Comprehensive testing with 100% coverage
+**Purpose**: Validate template integrity and prevent malicious templates
 
-**Responsibilities**:
+**Features**:
 
-- Unit testing for all components
-- Security testing for validation functions
-- Integration testing for workflows
-- Performance benchmarking
+- Template name validation
+- Template content verification
+- Parameter validation
+- File operation safety
+
+## 🧪 Testing Architecture
+
+### Test Coverage
+
+**Current Coverage**: 100% for security components, comprehensive for core functionality
 
 **Test Categories**:
 
-- **Security Tests** (`cmd/security_test.go`): Input validation, path traversal, malicious patterns
-- **Command Tests** (`cmd/init_test.go`): Init command, project creation, manifest generation
-- **Integration Tests**: End-to-end workflow testing
-- **Performance Tests**: Benchmark tests for critical functions
+- **Unit Tests**: Individual function testing
+- **Integration Tests**: Command system testing
+- **Security Tests**: Security validation testing
+- **Template Tests**: Template processing testing
 
-**Test Results**:
-
-```
-=== RUN   TestValidateAndSanitizePath --- PASS
-=== RUN   TestValidateAndSanitizeName --- PASS
-=== RUN   TestValidateDirectorySafety --- PASS
-=== RUN   TestValidateTemplateName --- PASS
-=== RUN   TestCheckForSuspiciousPatterns --- PASS
-=== RUN   TestCreateProjectDirectories --- PASS
-=== RUN   TestCreateWorkbenchManifest --- PASS
-
-BenchmarkValidateAndSanitizeName-8:     100,788 ops/sec (~12μs/op)
-BenchmarkValidateAndSanitizePath-8:      85,692 ops/sec (~12μs/op)
-BenchmarkCheckForSuspiciousPatterns-8: 11,804,667 ops/sec (~149ns/op)
-```
-
-## 🔄 Data Flow
-
-### 1. Command Execution Flow
-
-```
-User Input → Command System → Security Validation → Template Processing → Output
-     ↓              ↓                ↓                    ↓              ↓
-  om init    →   Cobra CLI   →   Input Validation  →   Scaffolding  →  Project
-```
-
-### 2. Project Initialization Flow
-
-```
-om init → Safety Check → Project Name → Template Selection → Service Name → Scaffolding → Manifest
-   ↓           ↓             ↓              ↓                ↓              ↓            ↓
-Command   Directory    Validation    Discovery        Validation    Processing    workbench.yaml
-System    Safety       & Sanitize    Templates       & Sanitize    Template      Generation
-```
-
-### 3. Security Validation Flow
-
-```
-User Input → Length Check → Pattern Check → Character Check → Sanitization → Output
-     ↓            ↓             ↓              ↓                ↓            ↓
-Project    Max Length    Forbidden      Allowed        Clean &      Valid
-Name       Validation    Patterns       Characters      Normalize    Output
-```
-
-### 4. Template Processing Flow
-
-```
-Template Selection → Parameter Collection → Validation → Processing → Post-Scaffolding
-       ↓                    ↓                ↓            ↓              ↓
-   Discovery         Interactive        Security    File Creation   Commands &
-   Template          Collection        Checks      & Substitution   Cleanup
-```
-
-## 🏛️ Component Architecture
-
-### Command System Architecture
+### Test Structure
 
 ```
 cmd/
-├── root.go          # Root command setup with Cobra
-├── init.go          # om init command implementation
-├── types.go         # YAML manifest type definitions
-├── security.go      # Security utilities and validation
-├── security_test.go # Security tests (100% coverage)
-└── init_test.go     # Init command tests
+├── security_test.go     # Security tests (100% coverage)
+├── init_test.go         # Init command tests
+└── compose_test.go      # Compose command tests
+
+internal/
+├── templating/
+│   └── processor_test.go # Template processing tests
+└── compose/
+    └── generator_test.go # Compose generation tests
 ```
 
-### Security Architecture
+### Security Testing
 
-```
-Security System
-├── Input Validation
-│   ├── Path Validation
-│   ├── Name Validation
-│   └── Template Validation
-├── Malicious Pattern Detection
-│   ├── JavaScript Injection
-│   ├── Command Injection
-│   └── Path Traversal
-├── Cross-Platform Security
-│   ├── Windows Reserved Names
-│   ├── Absolute Path Prevention
-│   └── Directory Safety Checks
-└── Configuration
-    ├── SecurityConfig
-    ├── ForbiddenPatterns
-    └── AllowedCharacters
-```
+**Comprehensive Security Test Suite**:
 
-### Testing Architecture
-
-```
-Testing Infrastructure
-├── Unit Tests
-│   ├── Security Functions
-│   ├── Command Functions
-│   └── Utility Functions
-├── Integration Tests
-│   ├── End-to-End Workflows
-│   ├── Template Processing
-│   └── Manifest Generation
-├── Performance Tests
-│   ├── Security Benchmarks
-│   ├── Processing Benchmarks
-│   └── Memory Usage Tests
-└── Coverage Reports
-    ├── 100% Security Coverage
-    ├── 100% Command Coverage
-    └── Comprehensive Reports
-```
-
-## 🔧 Technical Decisions
-
-### 1. Command Framework: Cobra
-
-**Decision**: Use Cobra for command-line interface
-
-**Rationale**:
-
-- Industry standard for Go CLI applications
-- Excellent help system and flag parsing
-- Extensible command structure
-- Built-in validation and error handling
-
-**Benefits**:
-
-- Professional CLI experience
-- Automatic help generation
-- Consistent command structure
-- Easy to extend with new commands
-
-### 2. Security: Defense in Depth
-
-**Decision**: Implement comprehensive security validation
-
-**Rationale**:
-
-- CLI tools can be security vectors
-- User input must be validated
-- Cross-platform security considerations
-- Enterprise-grade requirements
-
-**Implementation**:
-
-- Input validation and sanitization
-- Path traversal protection
+- Path traversal attack prevention
 - Malicious pattern detection
-- Cross-platform security checks
+- Cross-platform security validation
+- Directory safety testing
+- Template security validation
 
-### 3. Testing: 100% Coverage
+## 📊 Data Flow
 
-**Decision**: Aim for comprehensive test coverage
-
-**Rationale**:
-
-- Security-critical application
-- User-facing tool requires reliability
-- Complex logic needs thorough testing
-- Performance requirements
-
-**Implementation**:
-
-- Unit tests for all functions
-- Security-focused test suites
-- Integration tests for workflows
-- Performance benchmarks
-
-### 4. Architecture: Modular Design
-
-**Decision**: Modular component architecture
-
-**Rationale**:
-
-- Separation of concerns
-- Easy to test individual components
-- Extensible for new features
-- Maintainable codebase
-
-**Implementation**:
-
-- Command system separation
-- Security system isolation
-- Template system modularity
-- Clear interfaces between components
-
-### 5. Embedded Filesystem
-
-**Decision**: Embed templates into binary
-
-**Rationale**:
-
-- Single executable distribution
-- No external template dependencies
-- Consistent template availability
-- Simplified deployment
-
-**Implementation**:
-
-- Go `embed` directive
-- Template discovery from embedded FS
-- Version-controlled templates
-- Single binary distribution
-
-## 📊 Performance Characteristics
-
-### Security Validation Performance
+### Project Initialization Flow
 
 ```
-Benchmark Results:
-- ValidateAndSanitizeName: ~12μs/op (100,788 ops/sec)
-- ValidateAndSanitizePath: ~12μs/op (85,692 ops/sec)
-- CheckForSuspiciousPatterns: ~149ns/op (11,804,667 ops/sec)
+1. User runs 'om init'
+   ↓
+2. Directory safety check
+   ↓
+3. Project name validation
+   ↓
+4. Template selection
+   ↓
+5. Service name validation
+   ↓
+6. Parameter collection
+   ↓
+7. Template processing
+   ↓
+8. Manifest creation
+   ↓
+9. Success feedback
 ```
 
-### Memory Usage
+### Smart Service Addition Flow
 
-- **Base Memory**: ~8MB for CLI application
-- **Template Processing**: ~2MB additional during processing
-- **Security Validation**: Negligible memory overhead
+```
+1. User runs 'om add service'
+   ↓
+2. Mode detection (interactive/direct/partial)
+   ↓
+3. Parameter collection/validation
+   ↓
+4. Template validation
+   ↓
+5. Safety checks
+   ↓
+6. Template processing
+   ↓
+7. Manifest update
+   ↓
+8. Success feedback
+```
 
-### Scalability
+### Docker Compose Generation Flow
 
-- **Template Count**: Supports unlimited templates
-- **Project Size**: No practical limits
-- **Concurrent Usage**: Thread-safe operations
+```
+1. User runs 'om compose'
+   ↓
+2. Prerequisite checking
+   ↓
+3. Manifest parsing
+   ↓
+4. Service analysis
+   ↓
+5. Docker Compose generation
+   ↓
+6. Environment file creation
+   ↓
+7. Gitignore update
+   ↓
+8. Success feedback
+```
 
-## 🔒 Security Considerations
+## 🔧 Configuration Management
 
-### Input Validation
+### Project Manifest (`workbench.yaml`)
 
-- **Path Validation**: Prevents directory traversal attacks
-- **Name Validation**: Ensures safe project/service names
-- **Template Validation**: Validates template names and content
-- **Character Validation**: Restricts dangerous characters
+**Purpose**: Central project configuration and service management
 
-### Cross-Platform Security
+**Structure**:
 
-- **Windows**: Handles reserved names (con, prn, aux, etc.)
-- **Unix**: Prevents absolute path attacks
-- **Cross-Platform**: Consistent security across platforms
+```yaml
+apiVersion: openworkbench.io/v1alpha1
+kind: Project
+metadata:
+  name: my-project
+services:
+  frontend:
+    template: nextjs-full-stack
+    path: ./frontend
+  backend:
+    template: fastapi-basic
+    path: ./backend
+components:
+  gateway:
+    template: nginx-gateway
+    path: ./gateway
+```
 
-### Malicious Pattern Detection
+### Template Manifest (`template.json`)
 
-- **JavaScript Injection**: Blocks `javascript:` and script tags
-- **Command Injection**: Prevents `eval()`, `exec()`, `system()` calls
-- **Data URLs**: Blocks `data:` URLs
-- **Event Handlers**: Prevents `onload=`, `onerror=` patterns
+**Purpose**: Template configuration and parameter definitions
 
-## 🧪 Testing Strategy
+**Structure**:
 
-### Test Categories
-
-1. **Unit Tests**: Individual function testing
-2. **Integration Tests**: End-to-end workflow testing
-3. **Security Tests**: Security validation testing
-4. **Performance Tests**: Benchmark and performance testing
-
-### Coverage Goals
-
-- **Security Functions**: 100% coverage
-- **Command Functions**: 100% coverage
-- **Core Logic**: 100% coverage
-- **Error Paths**: 100% coverage
-
-### Test Implementation
-
-```go
-// Example security test
-func TestValidateAndSanitizePath(t *testing.T) {
-    tests := []struct {
-        name        string
-        input       string
-        expectError bool
-        expected    string
-    }{
-        {"valid path", "my-project", false, "my-project"},
-        {"path traversal", "../etc/passwd", true, ""},
-        {"absolute path", "/home/user", false, "\\home\\user"},
+```json
+{
+  "name": "Template Display Name",
+  "description": "Template description",
+  "parameters": [
+    {
+      "name": "ProjectName",
+      "type": "string",
+      "required": true,
+      "validation": {
+        "regex": "^[a-z0-9-]+$"
+      }
     }
-    // Test implementation...
+  ],
+  "postScaffold": {
+    "commands": [
+      {
+        "command": "npm install",
+        "condition": "InstallDeps == true"
+      }
+    ]
+  }
 }
 ```
 
-## 🔄 Future Architecture Considerations
+## 🚀 Performance Considerations
+
+### Embedded Filesystem
+
+**Benefits**:
+
+- Single binary distribution
+- No external template dependencies
+- Faster template loading
+- Reduced deployment complexity
+
+**Implementation**:
+
+```go
+//go:embed templates
+var templatesFS embed.FS
+```
+
+### Smart Mode Detection
+
+**Benefits**:
+
+- Reduced user interaction for experienced users
+- Maintained simplicity for new users
+- Flexible automation support
+- Improved user experience
+
+### Template Processing
+
+**Optimizations**:
+
+- Lazy template discovery
+- Cached parameter validation
+- Efficient file operations
+- Progress tracking for large templates
+
+## 🔄 Error Handling
+
+### Comprehensive Error System
+
+**Error Categories**:
+
+- **Validation Errors**: Input validation failures
+- **Security Errors**: Security check failures
+- **Template Errors**: Template processing failures
+- **System Errors**: File system and permission errors
+
+**Error Handling Strategy**:
+
+- Clear, actionable error messages
+- Contextual help and suggestions
+- Graceful degradation
+- Comprehensive logging
+
+### User-Friendly Error Messages
+
+**Examples**:
+
+```bash
+# Clear validation error
+❌ Invalid project name: "my project"
+   Project names can only contain lowercase letters, numbers, and hyphens.
+   Try: "my-project"
+
+# Security error
+❌ Security check failed: path traversal detected
+   Project names cannot contain "../" or "..\"
+
+# Template error
+❌ Template "invalid-template" not found
+   Available templates: nextjs-full-stack, react-typescript, fastapi-basic
+```
+
+## 🔮 Future Architecture
 
 ### Planned Enhancements
 
-1. **Plugin System**: Extensible template system
-2. **Template Marketplace**: Community template sharing
-3. **Advanced Security**: Security audit and compliance features
-4. **Performance Optimization**: Further performance improvements
+1. **Plugin System**: Extensible template and command system
+2. **Cloud Integration**: Direct deployment to cloud platforms
+3. **Advanced Orchestration**: Kubernetes and Docker Swarm support
+4. **Template Marketplace**: Community template sharing
+5. **Advanced Security**: Additional security layers and compliance
 
 ### Scalability Considerations
 
-- **Template Distribution**: CDN-based template delivery
-- **Caching**: Template and validation result caching
-- **Parallel Processing**: Concurrent template processing
-- **Cloud Integration**: Cloud-based template management
-
----
-
-**Maintainer**: Jash Kahar  
-**Last Updated**: February 8, 2025
+1. **Modular Design**: Easy to add new commands and features
+2. **Template Ecosystem**: Extensible template system
+3. **Cloud-Native**: Ready for cloud deployment
+4. **Enterprise Features**: Security and compliance ready
