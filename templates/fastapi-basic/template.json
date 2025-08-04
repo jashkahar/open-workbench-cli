@@ -1,6 +1,7 @@
 {
   "name": "FastAPI Basic",
   "description": "A simple FastAPI backend with modern Python practices.",
+  "type": "service",
   "parameters": [
     {
       "name": "ProjectName",

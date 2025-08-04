@@ -29,6 +29,9 @@ Features:
   - Parameter validation and grouping
   - Post-scaffolding actions
   - Cross-platform support`,
+		CompletionOptions: cobra.CompletionOptions{
+			DisableDefaultCmd: true,
+		},
 	}
 
 	// Add subcommands
@@ -46,6 +49,9 @@ Features:
 	initAddCommands()
 	rootCmd.AddCommand(addCmd)
 	// fmt.Printf("DEBUG: addCmd registered\n")
+
+	// Initialize compose command
+	initComposeCommand()
 
 	err := rootCmd.Execute()
 	if err != nil {

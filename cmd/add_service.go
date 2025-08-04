@@ -46,6 +46,29 @@ Available templates: react-typescript, nextjs-full-stack, fastapi-basic, express
 	RunE: runAddService,
 }
 
+var addComponentCmd = &cobra.Command{
+	Use:   "component",
+	Short: "Add a new component to your project.",
+	Long: `Add a new component to your project. Components are shared infrastructure 
+like gateways, load balancers, or other shared services.
+
+Interactive Mode (no parameters):
+  om add component
+
+Direct Mode (with parameters):
+  om add component --name gateway --template fastapi-basic
+
+Examples:
+  # Interactive mode - prompts for all details
+  om add component
+
+  # Direct mode with all parameters
+  om add component --name gateway --template fastapi-basic
+
+Available templates: react-typescript, nextjs-full-stack, fastapi-basic, express-api, vue-nuxt`,
+	RunE: runAddComponent,
+}
+
 // Top-level command to list available templates
 var listTemplatesCmd = &cobra.Command{
 	Use:   "list-templates",
@@ -57,11 +80,17 @@ var listTemplatesCmd = &cobra.Command{
 // initAddCommands initializes all add commands
 func initAddCommands() {
 	addCmd.AddCommand(addServiceCmd)
+	addCmd.AddCommand(addComponentCmd)
 
 	// Add flags for the service command (optional for interactive mode)
 	addServiceCmd.Flags().String("name", "", "Service name (optional - will prompt if not provided)")
 	addServiceCmd.Flags().String("template", "", "Template name (optional - will prompt if not provided)")
 	addServiceCmd.Flags().StringToString("params", nil, "Template parameters as key=value pairs (e.g., --params IncludeTesting=true,Framework=React)")
+
+	// Add flags for the component command (optional for interactive mode)
+	addComponentCmd.Flags().String("name", "", "Component name (optional - will prompt if not provided)")
+	addComponentCmd.Flags().String("template", "", "Template name (optional - will prompt if not provided)")
+	addComponentCmd.Flags().StringToString("params", nil, "Template parameters as key=value pairs")
 }
 
 func init() {
@@ -610,4 +639,354 @@ func printAddServiceSuccessMessage(serviceName, templateName string) {
 	fmt.Println("  om add service  # Add more services to your project")
 	fmt.Println("  om run          # Run your project (when implemented)")
 	fmt.Println("  om deploy       # Deploy your project (when implemented)")
+}
+
+// runAddComponent executes the add component command logic - smart mode detection
+func runAddComponent(cmd *cobra.Command, args []string) error {
+	// Check if we're in direct mode (parameters provided)
+	nameFlag, _ := cmd.Flags().GetString("name")
+	templateFlag, _ := cmd.Flags().GetString("template")
+	paramsFlag, _ := cmd.Flags().GetStringToString("params")
+
+	isDirectMode := nameFlag != "" || templateFlag != "" || len(paramsFlag) > 0
+
+	if isDirectMode {
+		// Direct mode - use provided parameters
+		return runAddComponentDirect(cmd, args)
+	} else {
+		// Interactive mode - prompt for all details
+		return runAddComponentInteractive(cmd, args)
+	}
+}
+
+// runAddComponentInteractive executes the add component command in interactive mode
+func runAddComponentInteractive(cmd *cobra.Command, args []string) error {
+	// Step 1: Find project root and load manifest
+	projectRoot, manifest, err := findProjectRootAndLoadManifest()
+	if err != nil {
+		return err
+	}
+
+	// Step 2: Prompt for new component details
+	componentName, templateName, err := promptForNewComponent()
+	if err != nil {
+		return err
+	}
+
+	// Step 3: Perform safety checks
+	if err := performComponentSafetyChecks(manifest, projectRoot, componentName); err != nil {
+		return err
+	}
+
+	// Step 4: Collect template parameters
+	params, err := collectTemplateParameters(templateName, false, manifest.Metadata.Name, "Open Workbench")
+	if err != nil {
+		return err
+	}
+
+	// Step 5: Scaffold the component
+	componentPath := filepath.Join(projectRoot, componentName)
+	if err := scaffoldComponentDirect(templateName, componentPath, params); err != nil {
+		return err
+	}
+
+	// Step 6: Update workbench.yaml (atomic update)
+	if err := updateWorkbenchManifestForComponent(manifest, componentName, templateName, projectRoot); err != nil {
+		return fmt.Errorf("failed to update workbench.yaml: %w", err)
+	}
+
+	// Step 7: Print success message
+	printAddComponentSuccessMessage(componentName, templateName)
+
+	return nil
+}
+
+// runAddComponentDirect executes the add component command in direct mode
+func runAddComponentDirect(cmd *cobra.Command, args []string) error {
+	// Step 1: Find project root and load manifest
+	projectRoot, manifest, err := findProjectRootAndLoadManifest()
+	if err != nil {
+		return err
+	}
+
+	// Step 2: Get parameters from command line
+	componentName, templateName, params, err := getDirectComponentParameters(cmd)
+	if err != nil {
+		return err
+	}
+
+	// Step 3: Perform safety checks
+	if err := performComponentSafetyChecks(manifest, projectRoot, componentName); err != nil {
+		return err
+	}
+
+	// Step 4: Validate template and parameters
+	if err := validateTemplateAndParameters(templateName, params); err != nil {
+		return err
+	}
+
+	// Step 5: Scaffold the component
+	componentPath := filepath.Join(projectRoot, componentName)
+	if err := scaffoldComponentDirect(templateName, componentPath, params); err != nil {
+		return err
+	}
+
+	// Step 6: Update workbench.yaml (atomic update)
+	if err := updateWorkbenchManifestForComponent(manifest, componentName, templateName, projectRoot); err != nil {
+		return fmt.Errorf("failed to update workbench.yaml: %w", err)
+	}
+
+	// Step 7: Print success message
+	printAddComponentSuccessMessage(componentName, templateName)
+
+	return nil
+}
+
+// promptForNewComponent prompts for component details
+func promptForNewComponent() (string, string, error) {
+	var componentName string
+	var templateName string
+
+	// Step 1: Discover and select component template first
+	templates, err := templating.DiscoverTemplates(templatesFS)
+	if err != nil {
+		return "", "", fmt.Errorf("could not discover templates: %w", err)
+	}
+
+	if len(templates) == 0 {
+		return "", "", fmt.Errorf("no templates found")
+	}
+
+	// Filter templates to show only component templates
+	var componentTemplates []templating.TemplateInfo
+	for _, template := range templates {
+		// Check if template has a "type" field and it's "component"
+		if template.Manifest != nil && template.Manifest.Type == "component" {
+			componentTemplates = append(componentTemplates, template)
+		}
+	}
+
+	// If no component templates found, show a helpful message
+	if len(componentTemplates) == 0 {
+		fmt.Println("No component templates found. Available templates are:")
+		for _, template := range templates {
+			fmt.Printf("  - %s: %s\n", template.Name, template.Description)
+		}
+		return "", "", fmt.Errorf("no component templates available. Use 'om add service' for service templates")
+	}
+
+	// Create template options for selection
+	var templateOptions []string
+	templateMap := make(map[string]string)
+	for _, template := range componentTemplates {
+		templateOptions = append(templateOptions, fmt.Sprintf("%s - %s", template.Name, template.Description))
+		templateMap[fmt.Sprintf("%s - %s", template.Name, template.Description)] = template.Name
+	}
+
+	// Prompt for template selection first
+	var selectedTemplateOption string
+	templateQuestion := &survey.Select{
+		Message: "Choose a component template:",
+		Options: templateOptions,
+		Help:    "Select a template that matches your component type",
+	}
+	err = survey.AskOne(templateQuestion, &selectedTemplateOption)
+	if err != nil {
+		if errors.Is(err, terminal.InterruptErr) {
+			fmt.Println("\nOperation cancelled.")
+			os.Exit(0)
+		}
+		return "", "", fmt.Errorf("could not select template: %w", err)
+	}
+
+	templateName = templateMap[selectedTemplateOption]
+
+	// Step 2: Prompt for component name after template selection
+	err = survey.AskOne(&survey.Input{
+		Message: "What is your component name?",
+		Help:    "This will be used as the directory name and in the workbench.yaml manifest",
+	}, &componentName, survey.WithValidator(func(val interface{}) error {
+		if str, ok := val.(string); ok {
+			if str == "" {
+				return errors.New("component name cannot be empty")
+			}
+			if !isValidProjectName(str) {
+				return errors.New("component name must contain only lowercase letters, numbers, and hyphens")
+			}
+		}
+		return nil
+	}))
+	if err != nil {
+		return "", "", err
+	}
+
+	return componentName, templateName, nil
+}
+
+// getDirectComponentParameters extracts parameters from command line flags
+func getDirectComponentParameters(cmd *cobra.Command) (string, string, map[string]interface{}, error) {
+	nameFlag, _ := cmd.Flags().GetString("name")
+	templateFlag, _ := cmd.Flags().GetString("template")
+	paramsFlag, _ := cmd.Flags().GetStringToString("params")
+
+	if nameFlag == "" {
+		return "", "", nil, errors.New("component name is required in direct mode")
+	}
+
+	if templateFlag == "" {
+		return "", "", nil, errors.New("template name is required in direct mode")
+	}
+
+	// Convert paramsFlag to map[string]interface{}
+	params := make(map[string]interface{})
+	for key, value := range paramsFlag {
+		params[key] = value
+	}
+
+	return nameFlag, templateFlag, params, nil
+}
+
+// performComponentSafetyChecks performs safety checks for component addition
+func performComponentSafetyChecks(manifest *WorkbenchManifest, projectRoot, componentName string) error {
+	// Check if component already exists
+	if _, exists := manifest.Components[componentName]; exists {
+		return fmt.Errorf("component '%s' already exists in workbench.yaml", componentName)
+	}
+
+	// Check if directory already exists
+	componentPath := filepath.Join(projectRoot, componentName)
+	if _, err := os.Stat(componentPath); err == nil {
+		return fmt.Errorf("directory '%s' already exists", componentName)
+	}
+
+	return nil
+}
+
+// scaffoldComponent scaffolds a component using the template system
+func scaffoldComponent(templateName, componentPath string, isAddComponent bool, existingProjectName string, existingOwner string) error {
+	// Discover available templates
+	templates, err := templating.DiscoverTemplates(templatesFS)
+	if err != nil {
+		return fmt.Errorf("could not discover templates: %w", err)
+	}
+
+	// Find the specific template
+	var templateInfo *templating.TemplateInfo
+	for _, template := range templates {
+		if template.Name == templateName {
+			templateInfo = &template
+			break
+		}
+	}
+
+	if templateInfo == nil {
+		return fmt.Errorf("template '%s' not found", templateName)
+	}
+
+	// Collect parameters
+	parameterValues, err := collectTemplateParameters(templateName, isAddComponent, existingProjectName, existingOwner)
+	if err != nil {
+		return fmt.Errorf("failed to collect parameters: %w", err)
+	}
+
+	// Create a template processor
+	processor := templating.NewTemplateProcessor(templateInfo.Manifest, parameterValues, false)
+
+	// Execute the scaffolding process
+	err = processor.ScaffoldProject(templatesFS, templateName, componentPath)
+	if err != nil {
+		return fmt.Errorf("failed to scaffold component: %w", err)
+	}
+
+	// Execute post-scaffolding actions
+	err = processor.ExecutePostScaffoldActions(componentPath)
+	if err != nil {
+		return fmt.Errorf("failed to execute post-scaffold actions: %w", err)
+	}
+
+	return nil
+}
+
+// scaffoldComponentDirect scaffolds a component with direct parameters
+func scaffoldComponentDirect(templateName, componentPath string, params map[string]interface{}) error {
+	// Discover available templates
+	templates, err := templating.DiscoverTemplates(templatesFS)
+	if err != nil {
+		return fmt.Errorf("could not discover templates: %w", err)
+	}
+
+	// Find the specific template
+	var templateInfo *templating.TemplateInfo
+	for _, template := range templates {
+		if template.Name == templateName {
+			templateInfo = &template
+			break
+		}
+	}
+
+	if templateInfo == nil {
+		return fmt.Errorf("template '%s' not found", templateName)
+	}
+
+	// Create a template processor
+	processor := templating.NewTemplateProcessor(templateInfo.Manifest, params, false)
+
+	// Execute the scaffolding process
+	err = processor.ScaffoldProject(templatesFS, templateName, componentPath)
+	if err != nil {
+		return fmt.Errorf("failed to scaffold component: %w", err)
+	}
+
+	// Execute post-scaffolding actions
+	err = processor.ExecutePostScaffoldActions(componentPath)
+	if err != nil {
+		return fmt.Errorf("failed to execute post-scaffold actions: %w", err)
+	}
+
+	return nil
+}
+
+// updateWorkbenchManifestForComponent updates the workbench.yaml file with the new component
+func updateWorkbenchManifestForComponent(manifest *WorkbenchManifest, componentName, templateName, projectRoot string) error {
+	// Initialize Components map if it doesn't exist
+	if manifest.Components == nil {
+		manifest.Components = make(map[string]Component)
+	}
+
+	// Add the new component
+	manifest.Components[componentName] = Component{
+		Template: templateName,
+		Path:     filepath.Join(".", componentName),
+	}
+
+	// Marshal to YAML
+	data, err := yaml.Marshal(manifest)
+	if err != nil {
+		return fmt.Errorf("failed to marshal manifest: %w", err)
+	}
+
+	// Write to file
+	manifestPath := filepath.Join(projectRoot, "workbench.yaml")
+	err = os.WriteFile(manifestPath, data, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write workbench.yaml: %w", err)
+	}
+
+	return nil
+}
+
+// printAddComponentSuccessMessage prints a success message for component addition
+func printAddComponentSuccessMessage(componentName, templateName string) {
+	fmt.Println("------------------------------------")
+	fmt.Printf("✅ Success! Component '%s' has been added to your project.\n", componentName)
+	fmt.Println()
+	fmt.Printf("📁 Component details:\n")
+	fmt.Printf("  Template: %s\n", templateName)
+	fmt.Printf("  Path: ./%s\n", componentName)
+	fmt.Println()
+	fmt.Println("🚀 Next steps:")
+	fmt.Printf("  cd %s\n", componentName)
+	fmt.Println("  om add service  # Add services to your project")
+	fmt.Println("  om add component # Add more components to your project")
+	fmt.Println("  om compose      # Generate Docker Compose configuration")
 }
