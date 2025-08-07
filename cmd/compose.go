@@ -5,25 +5,44 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jashkahar/open-workbench-platform/internal/compose"
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/jashkahar/open-workbench-platform/internal/generator"
+	"github.com/jashkahar/open-workbench-platform/internal/generator/docker"
+	"github.com/jashkahar/open-workbench-platform/internal/generator/terraform"
+	manifestPkg "github.com/jashkahar/open-workbench-platform/internal/manifest"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var composeCmd = &cobra.Command{
 	Use:   "compose",
-	Short: "Generate Docker Compose configuration from workbench.yaml",
-	Long: `Generate a complete Docker Compose configuration from your workbench.yaml file.
+	Short: "Generate deployment configuration from workbench.yaml",
+	Long: `Generate deployment configuration from your workbench.yaml file.
 
-This command will:
-1. Check for required prerequisites (Docker, Docker Compose)
-2. Parse your workbench.yaml file
-3. Generate docker-compose.yml with proper service networking
-4. Create .env and .env.example files with secure defaults
-5. Provide clear instructions for starting your application
+This command supports multiple deployment targets:
+- docker: Generate Docker Compose configuration for local development
+- terraform: Generate Terraform configuration for cloud infrastructure
 
-The generated docker-compose.yml file is clean, human-readable, and follows
-Docker Compose best practices. You can modify it directly or regenerate it
-by running this command again.`,
+Interactive Mode (no target specified):
+  om compose
+
+Direct Mode (with target specified):
+  om compose --target docker
+  om compose --target terraform
+
+Examples:
+  # Interactive mode - prompts for target selection
+  om compose
+
+  # Direct mode with Docker target
+  om compose --target docker
+
+  # Direct mode with Terraform target
+  om compose --target terraform
+
+The generated configuration will be based on your workbench.yaml file and
+the selected target. For Terraform generation, ensure you have configured
+environments in your workbench.yaml file.`,
 	RunE: runCompose,
 }
 
@@ -32,22 +51,14 @@ func initComposeCommand() {
 	if rootCmd != nil {
 		rootCmd.AddCommand(composeCmd)
 	}
+
+	// Add target flag
+	composeCmd.Flags().String("target", "", "Deployment target (docker, terraform)")
+	// Add environment flag for Terraform
+	composeCmd.Flags().String("env", "", "Environment name (dev, staging, prod) - required for Terraform")
 }
 
 func runCompose(cmd *cobra.Command, args []string) error {
-	fmt.Println("🔍 Checking prerequisites...")
-
-	// Check prerequisites
-	checker := compose.NewPrerequisiteChecker()
-	if err := checker.CheckAllPrerequisites(); err != nil {
-		fmt.Printf("❌ Prerequisite check failed: %s\n\n", err)
-		fmt.Println("📋 Installation instructions:")
-		fmt.Println(checker.GetPlatformSpecificInstructions())
-		return err
-	}
-
-	fmt.Println("✅ Prerequisites satisfied")
-
 	// Find workbench.yaml
 	workbenchPath := "workbench.yaml"
 	if _, err := os.Stat(workbenchPath); os.IsNotExist(err) {
@@ -57,119 +68,202 @@ func runCompose(cmd *cobra.Command, args []string) error {
 	fmt.Println("📖 Loading workbench.yaml...")
 
 	// Load and parse workbench.yaml
-	project, err := compose.LoadWorkbenchProject(workbenchPath)
+	manifest, err := loadWorkbenchManifest(workbenchPath)
 	if err != nil {
 		return fmt.Errorf("failed to load workbench.yaml: %w", err)
 	}
 
-	fmt.Printf("✅ Loaded project: %s\n", project.Metadata.Name)
+	fmt.Printf("✅ Loaded project: %s\n", manifest.Metadata.Name)
 
-	// Create generator
-	generator := compose.NewGenerator(project)
-
-	fmt.Println("🔧 Generating Docker Compose configuration...")
-
-	// Generate docker-compose.yml
-	config, err := generator.Generate()
+	// Get target from flag or prompt user
+	target, err := getTarget(cmd)
 	if err != nil {
-		return fmt.Errorf("failed to generate docker-compose configuration: %w", err)
+		return fmt.Errorf("failed to get target: %w", err)
 	}
 
-	// Save docker-compose.yml
-	if err := compose.SaveDockerCompose(config, "docker-compose.yml"); err != nil {
-		return fmt.Errorf("failed to save docker-compose.yml: %w", err)
+	// For Terraform, handle environment configuration
+	if target == "terraform" {
+		if err := handleTerraformEnvironment(cmd, manifest); err != nil {
+			return fmt.Errorf("failed to configure environment: %w", err)
+		}
 	}
 
-	fmt.Println("✅ Generated docker-compose.yml")
+	// Create generator registry
+	registry := generator.NewRegistry()
 
-	// Generate environment files
-	fmt.Println("🔐 Generating environment files...")
+	// Register generators
+	dockerGen := docker.NewGenerator()
+	terraformGen := terraform.NewGenerator()
 
-	envVars, err := generator.GenerateEnvFile()
+	if err := registry.Register(dockerGen); err != nil {
+		return fmt.Errorf("failed to register Docker generator: %w", err)
+	}
+
+	if err := registry.Register(terraformGen); err != nil {
+		return fmt.Errorf("failed to register Terraform generator: %w", err)
+	}
+
+	// Get the selected generator
+	gen, err := registry.Get(target)
 	if err != nil {
-		return fmt.Errorf("failed to generate environment variables: %w", err)
+		return fmt.Errorf("failed to get generator '%s': %w", target, err)
 	}
 
-	// Save .env file
-	if err := compose.SaveEnvFile(envVars, ".env"); err != nil {
-		return fmt.Errorf("failed to save .env file: %w", err)
+	fmt.Printf("🔧 Using %s generator: %s\n", target, gen.Description())
+
+	// Generate configuration
+	if err := gen.Generate(manifest); err != nil {
+		return fmt.Errorf("failed to generate %s configuration: %w", target, err)
 	}
-
-	// Save .env.example file
-	if err := compose.SaveEnvExampleFile(envVars, ".env.example"); err != nil {
-		return fmt.Errorf("failed to save .env.example file: %w", err)
-	}
-
-	fmt.Println("✅ Generated .env and .env.example files")
-
-	// Update .gitignore to include .env
-	if err := updateGitignore(); err != nil {
-		fmt.Printf("⚠️  Warning: Could not update .gitignore: %s\n", err)
-	}
-
-	// Print success message with instructions
-	printComposeSuccessMessage(checker.GetDockerComposeCommand())
 
 	return nil
 }
 
-func updateGitignore() error {
-	gitignorePath := ".gitignore"
-
-	// Read existing .gitignore
-	content, err := os.ReadFile(gitignorePath)
-	if err != nil && !os.IsNotExist(err) {
-		return err
+// handleTerraformEnvironment handles environment configuration for Terraform generation
+func handleTerraformEnvironment(cmd *cobra.Command, manifest *manifestPkg.WorkbenchManifest) error {
+	// Check if environments are already configured
+	if len(manifest.Environments) > 0 {
+		fmt.Println("✅ Environments already configured in workbench.yaml")
+		return nil
 	}
 
-	// Check if .env is already in .gitignore
-	contentStr := string(content)
-	if contains(contentStr, ".env") {
-		return nil // Already exists
+	// Get environment from flag or prompt user
+	envName, err := getEnvironment(cmd)
+	if err != nil {
+		return fmt.Errorf("failed to get environment: %w", err)
 	}
 
-	// Append .env to .gitignore
-	newContent := contentStr
-	if len(newContent) > 0 && !strings.HasSuffix(newContent, "\n") {
-		newContent += "\n"
+	// Create default environment with all services
+	manifest.Environments = map[string]manifestPkg.Environment{
+		envName: {
+			Provider: "aws",       // Default provider
+			Region:   "us-east-1", // Default region
+			Config: map[string]string{
+				"services": strings.Join(getServiceNames(manifest.Services), ","),
+			},
+		},
 	}
-	newContent += "\n# Environment variables\n.env\n"
 
-	return os.WriteFile(gitignorePath, []byte(newContent), 0644)
+	// Save updated workbench.yaml
+	if err := saveWorkbenchManifest(manifest, "."); err != nil {
+		return fmt.Errorf("failed to save workbench.yaml: %w", err)
+	}
+
+	fmt.Printf("✅ Added '%s' environment to workbench.yaml\n", envName)
+	return nil
 }
 
-func contains(s, substr string) bool {
-	return strings.Contains(s, substr)
+// getEnvironment gets the environment name from flag or prompts user
+func getEnvironment(cmd *cobra.Command) (string, error) {
+	// Check if environment is provided via flag
+	envName, err := cmd.Flags().GetString("env")
+	if err != nil {
+		return "", err
+	}
+
+	// If environment is provided, validate it
+	if envName != "" {
+		validEnvs := []string{"dev", "staging", "prod"}
+		for _, valid := range validEnvs {
+			if envName == valid {
+				return envName, nil
+			}
+		}
+		return "", fmt.Errorf("invalid environment '%s'. Valid environments are: %s", envName, strings.Join(validEnvs, ", "))
+	}
+
+	// Interactive mode - prompt user for environment
+	var envChoice string
+	prompt := &survey.Select{
+		Message: "Which environment would you like to configure?",
+		Options: []string{
+			"dev - Development environment",
+			"staging - Staging environment",
+			"prod - Production environment",
+		},
+		Help: "Select the environment for Terraform configuration",
+	}
+
+	if err := survey.AskOne(prompt, &envChoice); err != nil {
+		return "", fmt.Errorf("failed to get environment selection: %w", err)
+	}
+
+	// Extract environment from choice
+	if strings.Contains(envChoice, "dev") {
+		return "dev", nil
+	} else if strings.Contains(envChoice, "staging") {
+		return "staging", nil
+	} else if strings.Contains(envChoice, "prod") {
+		return "prod", nil
+	}
+
+	return "", fmt.Errorf("invalid environment selection")
 }
 
-func printComposeSuccessMessage(dockerComposeCmd string) {
-	fmt.Println("\n" + strings.Repeat("=", 60))
-	fmt.Println("✅ Successfully built your local environment configuration!")
-	fmt.Println(strings.Repeat("=", 60))
+// getServiceNames extracts service names from the services map
+func getServiceNames(services map[string]manifestPkg.Service) []string {
+	var names []string
+	for name := range services {
+		names = append(names, name)
+	}
+	return names
+}
 
-	fmt.Println("\n📁 Generated files:")
-	fmt.Println("  • docker-compose.yml - Main configuration file")
-	fmt.Println("  • .env - Environment variables with default credentials")
-	fmt.Println("  • .env.example - Template for environment variables")
+// getTarget gets the target from flag or prompts user
+func getTarget(cmd *cobra.Command) (string, error) {
+	// Check if target is provided via flag
+	target, err := cmd.Flags().GetString("target")
+	if err != nil {
+		return "", err
+	}
 
-	fmt.Println("\n🔑 Security notes:")
-	fmt.Println("  • Default credentials are in .env file - review and change them")
-	fmt.Println("  • .env file is automatically added to .gitignore")
-	fmt.Println("  • Use .env.example as a template for production deployments")
+	// If target is provided, validate it
+	if target != "" {
+		validTargets := []string{"docker", "terraform"}
+		for _, valid := range validTargets {
+			if target == valid {
+				return target, nil
+			}
+		}
+		return "", fmt.Errorf("invalid target '%s'. Valid targets are: %s", target, strings.Join(validTargets, ", "))
+	}
 
-	fmt.Println("\n🚀 To start your application, run:")
-	fmt.Printf("  %s -f docker-compose.yml up --build\n", dockerComposeCmd)
+	// Interactive mode - prompt user for target
+	var targetChoice string
+	prompt := &survey.Select{
+		Message: "Which target would you like to compose for?",
+		Options: []string{
+			"docker - Generate Docker Compose configuration for local development",
+			"terraform - Generate Terraform configuration for cloud infrastructure",
+		},
+		Help: "Select the deployment target for your configuration",
+	}
 
-	fmt.Println("\n📋 Additional commands:")
-	fmt.Printf("  %s -f docker-compose.yml down     # Stop all services\n", dockerComposeCmd)
-	fmt.Printf("  %s -f docker-compose.yml logs     # View service logs\n", dockerComposeCmd)
-	fmt.Printf("  %s -f docker-compose.yml ps       # List running services\n", dockerComposeCmd)
+	if err := survey.AskOne(prompt, &targetChoice); err != nil {
+		return "", fmt.Errorf("failed to get target selection: %w", err)
+	}
 
-	fmt.Println("\n💡 Tips:")
-	fmt.Println("  • The generated docker-compose.yml is human-readable and editable")
-	fmt.Println("  • Make changes to workbench.yaml and re-run 'om compose' to regenerate")
-	fmt.Println("  • Each service owns its own resources (databases, etc.)")
-	fmt.Println("  • Services are automatically networked together")
+	// Extract target from choice
+	if strings.Contains(targetChoice, "docker") {
+		return "docker", nil
+	} else if strings.Contains(targetChoice, "terraform") {
+		return "terraform", nil
+	}
 
-	fmt.Println("\n🎉 Your local development environment is ready!")
+	return "", fmt.Errorf("invalid target selection")
+}
+
+// loadWorkbenchManifest loads and parses the workbench.yaml file
+func loadWorkbenchManifest(path string) (*manifestPkg.WorkbenchManifest, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read workbench.yaml: %w", err)
+	}
+
+	var manifest manifestPkg.WorkbenchManifest
+	if err := yaml.Unmarshal(content, &manifest); err != nil {
+		return nil, fmt.Errorf("failed to parse workbench.yaml: %w", err)
+	}
+
+	return &manifest, nil
 }

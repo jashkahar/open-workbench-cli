@@ -105,7 +105,7 @@
         "condition": "InstallDeps == true"
       },
       {
-        "command": "cp env.example .env",
+        "command": "copy env.example .env 2>nul || cp env.example .env 2>/dev/null || echo 'env.example not found, skipping .env creation'",
         "description": "Creating environment file...",
         "condition": "true"
       },

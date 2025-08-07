@@ -1,458 +1,307 @@
-# Architecture Overview
-
-This document provides a comprehensive overview of the Open Workbench CLI architecture, including system design, components, data flow, and technical decisions.
-
-## 🏗️ System Architecture
-
-### High-Level Overview
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   User Input    │    │   Command       │    │   Template      │    │   Output        │
-│                 │    │   System        │    │   Processing    │    │                 │
-│ • CLI Args      │───▶│ • Cobra        │───▶│ • Discovery     │───▶│ • Project       │
-│ • Interactive   │    │ • Security      │    │ • Parameters    │    │ • Files         │
-│ • Smart Mode    │    │ • Validation    │    │ • Processing    │    │ • Docker        │
-└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
-```
-
-### Core Components
-
-#### 1. Command System (`cmd/`)
-
-**Purpose**: Modern CLI framework with security, testing, and smart mode detection
-
-**Responsibilities**:
-
-- Provide structured command hierarchy using Cobra
-- Implement comprehensive security validation for all inputs
-- Handle smart mode detection (interactive/direct/partial)
-- Manage project initialization with manifests
-- Generate Docker Compose configurations
-
-**Key Components**:
-
-- **Root Command** (`cmd/root.go`): Main CLI setup and command registration
-- **Init Command** (`cmd/init.go`): Project initialization with `workbench.yaml` manifests
-- **Add Service** (`cmd/add_service.go`): Smart service addition with mode detection
-- **Compose Command** (`cmd/compose.go`): Docker Compose generation
-- **Security** (`cmd/security.go`): Comprehensive security utilities and validation
-- **Types** (`cmd/types.go`): YAML manifest type definitions
-
-**Key Functions**:
-
-- `Execute()`: Main CLI execution with embedded filesystem
-- `runInit()`: Project initialization workflow
-- `runAddService()`: Smart service addition with mode detection
-- `runCompose()`: Docker Compose generation
-- `ValidateAndSanitizeName()`: Input validation and sanitization
-- `ValidateAndSanitizePath()`: Path security validation
-- `CheckForSuspiciousPatterns()`: Malicious pattern detection
-
-**Smart Command System**:
-
-- **Mode Detection**: Automatically switches between interactive and direct modes
-- **Interactive Mode**: No parameters → prompts for all details
-- **Direct Mode**: All parameters provided → uses provided parameters
-- **Partial Mode**: Some parameters → uses provided, prompts for missing
-
-**Security Features**:
-
-- Path traversal protection (`../` and `..\` attacks)
-- Malicious pattern detection (JavaScript injection, command injection)
-- Cross-platform security (Windows reserved names, absolute paths)
-- Directory safety checks (permissions, accessibility, symbolic links)
-- Template security validation
-
-#### 2. Main Application (`main.go`)
-
-**Purpose**: Entry point and embedded filesystem management
-
-**Responsibilities**:
-
-- Initialize embedded filesystem for templates
-- Route to command system
-- Handle application lifecycle
-
-**Key Functions**:
-
-- `main()`: Application entry point with embedded filesystem
-- `embed` directive: Embed templates into binary
-
-#### 3. Compose System (`internal/compose/`)
-
-**Purpose**: Docker Compose generation and orchestration
-
-**Responsibilities**:
-
-- Parse `workbench.yaml` project manifests
-- Generate production-ready Docker Compose configurations
-- Create environment files with secure defaults
-- Validate Docker prerequisites
-
-**Key Components**:
-
-- **Generator** (`generator.go`): Docker Compose configuration generation
-- **Prerequisites** (`prerequisites.go`): Docker environment validation
-- **Types** (`types.go`): Compose-specific type definitions
-
-**Key Functions**:
-
-- `Generate()`: Create complete docker-compose.yml
-- `GenerateEnvFile()`: Generate environment variables
-- `CheckAllPrerequisites()`: Validate Docker installation
-- `SaveDockerCompose()`: Write configuration files
-
-**Features**:
-
-- Service networking with proper isolation
-- Environment variable management with secure defaults
-- Volume mounting for development and production
-- Health checks for service monitoring
-- Multi-stage builds for optimized images
-
-#### 4. Templating System (`internal/templating/`)
-
-**Purpose**: Dynamic template processing with conditional logic
-
-**Responsibilities**:
-
-- Template discovery and validation
-- Parameter collection and validation
-- Conditional file generation
-- Post-scaffolding actions
-
-**Key Components**:
-
-- **Discovery** (`discovery.go`): Template discovery and validation
-- **Parameters** (`parameters.go`): Parameter processing and validation
-- **Processor** (`processor.go`): Template processing and file operations
-- **Progress** (`progress.go`): Progress tracking and user feedback
-
-**Key Functions**:
-
-- `DiscoverTemplates()`: Find and validate available templates
-- `CollectParameters()`: Interactive parameter collection
-- `ProcessTemplate()`: Template processing with conditional logic
-- `ExecutePostScaffold()`: Post-scaffolding actions
-
-**Advanced Features**:
-
-- Conditional parameter display based on other parameters
-- Conditional file generation and deletion
-- Post-scaffolding commands and actions
-- Parameter validation with regex patterns
-- Parameter grouping for better UX
-
-## 🔒 Security Architecture
-
-### Input Validation System
-
-**Purpose**: Comprehensive security validation for all user inputs
-
-**Components**:
-
-- **Path Validation**: Prevents path traversal attacks
-- **Name Validation**: Validates project and service names
-- **Pattern Detection**: Identifies malicious patterns
-- **Cross-Platform Security**: Handles Windows and Unix security
-
-**Validation Rules**:
-
-```go
-// Path traversal protection
-if strings.Contains(name, "../") || strings.Contains(name, "..\\") {
-    return errors.New("path traversal not allowed")
-}
-
-// Malicious pattern detection
-suspiciousPatterns := []string{
-    "javascript:", "data:", "vbscript:", "onload=", "onerror=",
-    "eval(", "setTimeout(", "setInterval(", "document.cookie",
-}
-
-// Windows reserved names
-windowsReserved := []string{"con", "prn", "aux", "nul", "com1", "com2"}
-```
-
-### Directory Safety System
-
-**Purpose**: Ensure safe directory operations
-
-**Features**:
-
-- Directory permission validation
-- Symbolic link detection
-- Accessibility checks
-- Empty directory validation
-
-**Safety Checks**:
-
-```go
-func ValidateDirectorySafety(path string) error {
-    // Check if directory exists and is accessible
-    // Validate permissions
-    // Check for symbolic links
-    // Ensure directory is writable
-}
-```
-
-### Template Security
-
-**Purpose**: Validate template integrity and prevent malicious templates
-
-**Features**:
-
-- Template name validation
-- Template content verification
-- Parameter validation
-- File operation safety
-
-## 🧪 Testing Architecture
-
-### Test Coverage
-
-**Current Coverage**: 100% for security components, comprehensive for core functionality
-
-**Test Categories**:
-
-- **Unit Tests**: Individual function testing
-- **Integration Tests**: Command system testing
-- **Security Tests**: Security validation testing
-- **Template Tests**: Template processing testing
-
-### Test Structure
-
-```
-cmd/
-├── security_test.go     # Security tests (100% coverage)
-├── init_test.go         # Init command tests
-└── compose_test.go      # Compose command tests
-
-internal/
-├── templating/
-│   └── processor_test.go # Template processing tests
-└── compose/
-    └── generator_test.go # Compose generation tests
-```
-
-### Security Testing
-
-**Comprehensive Security Test Suite**:
-
-- Path traversal attack prevention
-- Malicious pattern detection
-- Cross-platform security validation
-- Directory safety testing
-- Template security validation
-
-## 📊 Data Flow
-
-### Project Initialization Flow
-
-```
-1. User runs 'om init'
-   ↓
-2. Directory safety check
-   ↓
-3. Project name validation
-   ↓
-4. Template selection
-   ↓
-5. Service name validation
-   ↓
-6. Parameter collection
-   ↓
-7. Template processing
-   ↓
-8. Manifest creation
-   ↓
-9. Success feedback
-```
-
-### Smart Service Addition Flow
-
-```
-1. User runs 'om add service'
-   ↓
-2. Mode detection (interactive/direct/partial)
-   ↓
-3. Parameter collection/validation
-   ↓
-4. Template validation
-   ↓
-5. Safety checks
-   ↓
-6. Template processing
-   ↓
-7. Manifest update
-   ↓
-8. Success feedback
-```
-
-### Docker Compose Generation Flow
-
-```
-1. User runs 'om compose'
-   ↓
-2. Prerequisite checking
-   ↓
-3. Manifest parsing
-   ↓
-4. Service analysis
-   ↓
-5. Docker Compose generation
-   ↓
-6. Environment file creation
-   ↓
-7. Gitignore update
-   ↓
-8. Success feedback
-```
-
-## 🔧 Configuration Management
-
-### Project Manifest (`workbench.yaml`)
-
-**Purpose**: Central project configuration and service management
-
-**Structure**:
+# System Architecture
+
+This document provides an in-depth look at the Open Workbench Platform's architecture, core logic, and design patterns.
+
+## High-Level System Overview
+
+Open Workbench Platform is a CLI tool that automates the creation of multi-service applications. The system consists of several key components:
+
+- **Command Layer** (`cmd/`): CLI commands and user interaction
+- **Templating Engine** (`internal/templating/`): Dynamic template processing
+- **Manifest System** (`internal/manifest/`): Project configuration management
+- **Generator System** (`internal/generator/`): Deployment configuration generation
+- **Security Layer** (`cmd/security.go`): Input validation and sanitization
+
+## Core Components
+
+### Command Layer (`cmd/`)
+
+The command layer is built using the Cobra framework and provides the following commands:
+
+#### `om init`
+- **Purpose**: Initialize a new Open Workbench project
+- **Process**: 
+  1. Validates directory safety
+  2. Prompts for project details
+  3. Creates project structure
+  4. Generates `workbench.yaml` manifest
+- **Key Files**: `cmd/init.go`
+
+#### `om add service`
+- **Purpose**: Add a new service to an existing project
+- **Modes**: Interactive and direct (with flags)
+- **Process**:
+  1. Loads existing `workbench.yaml`
+  2. Validates service name uniqueness
+  3. Scaffolds service using template
+  4. Updates manifest file
+- **Key Files**: `cmd/add_service.go`
+
+#### `om add component`
+- **Purpose**: Add shared infrastructure components
+- **Process**: Similar to add service but for components
+- **Key Files**: `cmd/add_service.go` (shared logic)
+
+#### `om compose`
+- **Purpose**: Generate deployment configurations
+- **Targets**: Docker Compose, Terraform
+- **Process**:
+  1. Loads `workbench.yaml`
+  2. Selects target (docker/terraform)
+  3. Generates configuration files
+- **Key Files**: `cmd/compose.go`
+
+#### `om ls`
+- **Purpose**: List project services and components
+- **Process**: Reads and displays `workbench.yaml` contents
+- **Key Files**: `cmd/ls.go`
+
+#### `om delete`
+- **Purpose**: Remove services or components
+- **Process**: Updates manifest and removes files
+- **Key Files**: `cmd/delete.go`
+
+### Templating Engine (`internal/templating/`)
+
+The templating engine is the core of the system, providing dynamic template processing with conditional logic.
+
+#### Key Components
+
+**TemplateProcessor** (`processor.go`):
+- Processes template files with Go template syntax
+- Handles conditional logic (`{{ if .Condition }}`)
+- Manages post-scaffolding actions
+- Provides progress reporting
+
+**Parameter System** (`parameters.go`):
+- Defines parameter types (string, boolean, select, multi-select)
+- Handles parameter validation and grouping
+- Manages interactive prompting
+
+**Discovery System** (`discovery.go`):
+- Discovers available templates
+- Loads template manifests (`template.json`)
+- Validates template structure
+
+#### Template Processing Flow
+
+1. **Discovery**: Find available templates in embedded filesystem
+2. **Parameter Collection**: Interactive or direct parameter gathering
+3. **Validation**: Validate parameters against template requirements
+4. **Processing**: Apply template with collected parameters
+5. **Post-Actions**: Execute conditional file deletions and commands
+
+### Manifest System (`internal/manifest/`)
+
+The manifest system manages project configuration through `workbench.yaml` files.
+
+#### WorkbenchManifest Structure
 
 ```yaml
-apiVersion: openworkbench.io/v1alpha1
-kind: Project
+apiVersion: v1
+kind: Workbench
 metadata:
-  name: my-project
+  name: project-name
+environments:
+  dev:
+    provider: aws
+    region: us-west-2
 services:
   frontend:
     template: nextjs-full-stack
-    path: ./frontend
+    path: frontend
+    port: 3000
   backend:
     template: fastapi-basic
-    path: ./backend
+    path: backend
+    port: 8000
 components:
   gateway:
     template: nginx-gateway
-    path: ./gateway
+    path: gateway
+    ports: ["80", "443"]
 ```
 
-### Template Manifest (`template.json`)
+#### Key Features
 
-**Purpose**: Template configuration and parameter definitions
+- **Service Management**: Track all services in the project
+- **Component Support**: Shared infrastructure components
+- **Environment Configuration**: Multi-environment deployment support
+- **Resource Tracking**: Service-specific resources (databases, etc.)
 
-**Structure**:
+### Generator System (`internal/generator/`)
 
-```json
-{
-  "name": "Template Display Name",
-  "description": "Template description",
-  "parameters": [
-    {
-      "name": "ProjectName",
-      "type": "string",
-      "required": true,
-      "validation": {
-        "regex": "^[a-z0-9-]+$"
-      }
-    }
-  ],
-  "postScaffold": {
-    "commands": [
-      {
-        "command": "npm install",
-        "condition": "InstallDeps == true"
-      }
-    ]
-  }
-}
-```
+The generator system creates deployment configurations from the manifest.
 
-## 🚀 Performance Considerations
+#### Docker Generator (`generator/docker/`)
+- Generates `docker-compose.yml` files
+- Handles service networking
+- Manages environment variables
+- Supports volume mounts
 
-### Embedded Filesystem
+#### Terraform Generator (`generator/terraform/`)
+- Generates Terraform configurations
+- Supports multiple cloud providers
+- Handles environment-specific configurations
+- Manages infrastructure as code
 
-**Benefits**:
+### Security Layer (`cmd/security.go`)
 
-- Single binary distribution
-- No external template dependencies
-- Faster template loading
-- Reduced deployment complexity
+The security layer provides input validation and sanitization.
 
-**Implementation**:
+#### Key Features
 
-```go
-//go:embed templates
-var templatesFS embed.FS
-```
+- **Directory Safety**: Prevents overwriting existing projects
+- **Parameter Validation**: Validates user inputs against schemas
+- **Path Sanitization**: Prevents path traversal attacks
+- **Template Validation**: Ensures template integrity
 
-### Smart Mode Detection
+## Command Reference
 
-**Benefits**:
+### `om init`
 
-- Reduced user interaction for experienced users
-- Maintained simplicity for new users
-- Flexible automation support
-- Improved user experience
+Initialize a new Open Workbench project.
 
-### Template Processing
+**Flags:**
+- None (interactive mode only)
 
-**Optimizations**:
+**Process:**
+1. Validates current directory is empty or contains only hidden files
+2. Prompts for project name and first service
+3. Creates project structure
+4. Generates initial `workbench.yaml`
 
-- Lazy template discovery
-- Cached parameter validation
-- Efficient file operations
-- Progress tracking for large templates
+### `om add service`
 
-## 🔄 Error Handling
+Add a new service to the project.
 
-### Comprehensive Error System
+**Flags:**
+- `--name`: Service name (optional)
+- `--template`: Template name (optional)
+- `--params`: Key-value parameters (optional)
 
-**Error Categories**:
+**Modes:**
+- **Interactive**: No flags provided, prompts for all details
+- **Direct**: Flags provided, minimal prompting
 
-- **Validation Errors**: Input validation failures
-- **Security Errors**: Security check failures
-- **Template Errors**: Template processing failures
-- **System Errors**: File system and permission errors
+### `om add component`
 
-**Error Handling Strategy**:
+Add a shared component to the project.
 
-- Clear, actionable error messages
-- Contextual help and suggestions
-- Graceful degradation
-- Comprehensive logging
+**Flags:**
+- `--name`: Component name (optional)
+- `--template`: Template name (optional)
+- `--params`: Key-value parameters (optional)
 
-### User-Friendly Error Messages
+### `om compose`
 
-**Examples**:
+Generate deployment configuration.
 
-```bash
-# Clear validation error
-❌ Invalid project name: "my project"
-   Project names can only contain lowercase letters, numbers, and hyphens.
-   Try: "my-project"
+**Flags:**
+- `--target`: Deployment target (docker, terraform)
+- `--env`: Environment name (required for terraform)
 
-# Security error
-❌ Security check failed: path traversal detected
-   Project names cannot contain "../" or "..\"
+### `om ls`
 
-# Template error
-❌ Template "invalid-template" not found
-   Available templates: nextjs-full-stack, react-typescript, fastapi-basic
-```
+List project services and components.
 
-## 🔮 Future Architecture
+**Flags:**
+- None
 
-### Planned Enhancements
+### `om delete`
 
-1. **Plugin System**: Extensible template and command system
-2. **Cloud Integration**: Direct deployment to cloud platforms
-3. **Advanced Orchestration**: Kubernetes and Docker Swarm support
-4. **Template Marketplace**: Community template sharing
-5. **Advanced Security**: Additional security layers and compliance
+Remove services or components.
 
-### Scalability Considerations
+**Flags:**
+- `--name`: Name of service/component to delete
+- `--type`: Type (service or component)
 
-1. **Modular Design**: Easy to add new commands and features
-2. **Template Ecosystem**: Extensible template system
-3. **Cloud-Native**: Ready for cloud deployment
-4. **Enterprise Features**: Security and compliance ready
+## Security Architecture
+
+### Input Validation
+
+The system implements multiple layers of input validation:
+
+1. **Parameter Validation**: Each parameter has validation rules (regex, required, etc.)
+2. **Directory Safety**: Prevents overwriting existing projects
+3. **Path Sanitization**: Prevents path traversal attacks
+4. **Template Validation**: Ensures template integrity
+
+### Safety Checks
+
+- **Directory Safety**: Validates target directories are safe for initialization
+- **Service Uniqueness**: Ensures service names are unique within projects
+- **Template Existence**: Validates templates exist before processing
+- **Parameter Completeness**: Ensures all required parameters are provided
+
+## Data Flow
+
+### Project Initialization Flow
+
+1. **User runs `om init`**
+2. **Directory Safety Check**: Validates current directory
+3. **Project Name Collection**: Prompts for project name
+4. **First Service Setup**: Prompts for service details
+5. **Directory Creation**: Creates project structure
+6. **Service Scaffolding**: Processes template with parameters
+7. **Manifest Creation**: Generates `workbench.yaml`
+8. **Success Feedback**: Reports completion
+
+### Service Addition Flow
+
+1. **User runs `om add service`**
+2. **Manifest Loading**: Loads existing `workbench.yaml`
+3. **Service Details Collection**: Interactive or direct parameter collection
+4. **Safety Validation**: Checks service name uniqueness
+5. **Template Processing**: Scaffolds service using template
+6. **Manifest Update**: Updates `workbench.yaml`
+7. **Success Feedback**: Reports completion
+
+### Template Processing Flow
+
+1. **Template Discovery**: Loads template from embedded filesystem
+2. **Parameter Collection**: Gathers parameters interactively or from flags
+3. **Parameter Validation**: Validates against template requirements
+4. **File Processing**: Processes each file in template
+5. **Conditional Logic**: Applies conditional file deletions
+6. **Post-Actions**: Executes post-scaffolding commands
+7. **Progress Reporting**: Provides user feedback throughout
+
+## Design Patterns
+
+### Command Pattern
+Each CLI command is implemented as a separate Cobra command with clear separation of concerns.
+
+### Template Method Pattern
+The templating engine uses a template method pattern for processing templates with customizable steps.
+
+### Strategy Pattern
+The generator system uses strategy pattern for different deployment targets (Docker, Terraform).
+
+### Factory Pattern
+The template processor uses factory pattern for creating different parameter types.
+
+## Error Handling
+
+The system implements comprehensive error handling:
+
+1. **Graceful Degradation**: Continues processing when possible
+2. **User-Friendly Messages**: Clear error messages for users
+3. **Validation Errors**: Specific validation error messages
+4. **Recovery Mechanisms**: Automatic cleanup on failures
+
+## Performance Considerations
+
+1. **Embedded Templates**: Templates are embedded in binary for fast access
+2. **Lazy Loading**: Templates are loaded only when needed
+3. **Minimal I/O**: Efficient file operations
+4. **Memory Management**: Proper cleanup of resources
+
+## Extension Points
+
+The system is designed for extensibility:
+
+1. **Template System**: Easy to add new templates
+2. **Generator System**: Easy to add new deployment targets
+3. **Parameter Types**: Easy to add new parameter types
+4. **Command System**: Easy to add new commands 

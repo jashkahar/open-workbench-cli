@@ -18,9 +18,11 @@
 go.work
 
 # Build output
-bin/
 dist/
 build/
+
+# Binaries (keep bin/ for development builds)
+# bin/ is intentionally not ignored to allow for development builds
 
 # IDE files
 .vscode/

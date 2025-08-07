@@ -9,6 +9,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
+	manifestPkg "github.com/jashkahar/open-workbench-platform/internal/manifest"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
@@ -523,13 +524,13 @@ func scaffoldService(templateName, servicePath string, isAddService bool, existi
 
 // createWorkbenchManifest creates and writes the workbench.yaml file
 func createWorkbenchManifest(projectName, serviceName, templateName string) error {
-	manifest := WorkbenchManifest{
+	manifest := manifestPkg.WorkbenchManifest{
 		APIVersion: "openworkbench.io/v1alpha1",
 		Kind:       "Project",
-		Metadata: ProjectMetadata{
+		Metadata: manifestPkg.ProjectMetadata{
 			Name: projectName,
 		},
-		Services: map[string]Service{
+		Services: map[string]manifestPkg.Service{
 			serviceName: {
 				Template: templateName,
 				Path:     filepath.Join(".", serviceName),

@@ -9,6 +9,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
+	manifestPkg "github.com/jashkahar/open-workbench-platform/internal/manifest"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
@@ -280,7 +281,7 @@ func runListTemplates(cmd *cobra.Command, args []string) error {
 
 // findProjectRootAndLoadManifest finds the project root by searching for workbench.yaml
 // and loads the manifest file
-func findProjectRootAndLoadManifest() (string, *WorkbenchManifest, error) {
+func findProjectRootAndLoadManifest() (string, *manifestPkg.WorkbenchManifest, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to get current directory: %w", err)
@@ -299,7 +300,7 @@ func findProjectRootAndLoadManifest() (string, *WorkbenchManifest, error) {
 		return "", nil, fmt.Errorf("failed to read workbench.yaml: %w", err)
 	}
 
-	var manifest WorkbenchManifest
+	var manifest manifestPkg.WorkbenchManifest
 	if err := yaml.Unmarshal(data, &manifest); err != nil {
 		return "", nil, fmt.Errorf("failed to parse workbench.yaml: %w", err)
 	}
@@ -586,7 +587,7 @@ func scaffoldServiceDirect(templateName, servicePath string, params map[string]i
 }
 
 // performSafetyChecks performs critical safety checks before adding the service
-func performSafetyChecks(manifest *WorkbenchManifest, projectRoot, serviceName string) error {
+func performSafetyChecks(manifest *manifestPkg.WorkbenchManifest, projectRoot, serviceName string) error {
 	// Check if service already exists in manifest
 	if _, exists := manifest.Services[serviceName]; exists {
 		return fmt.Errorf("error: a service named '%s' already exists in your project", serviceName)
@@ -602,9 +603,9 @@ func performSafetyChecks(manifest *WorkbenchManifest, projectRoot, serviceName s
 }
 
 // updateWorkbenchManifest updates the workbench.yaml file with the new service
-func updateWorkbenchManifest(manifest *WorkbenchManifest, serviceName, templateName, projectRoot string) error {
+func updateWorkbenchManifest(manifest *manifestPkg.WorkbenchManifest, serviceName, templateName, projectRoot string) error {
 	// Add the new service to the manifest
-	manifest.Services[serviceName] = Service{
+	manifest.Services[serviceName] = manifestPkg.Service{
 		Template: templateName,
 		Path:     filepath.Join(".", serviceName),
 	}
@@ -847,7 +848,7 @@ func getDirectComponentParameters(cmd *cobra.Command) (string, string, map[strin
 }
 
 // performComponentSafetyChecks performs safety checks for component addition
-func performComponentSafetyChecks(manifest *WorkbenchManifest, projectRoot, componentName string) error {
+func performComponentSafetyChecks(manifest *manifestPkg.WorkbenchManifest, projectRoot, componentName string) error {
 	// Check if component already exists
 	if _, exists := manifest.Components[componentName]; exists {
 		return fmt.Errorf("component '%s' already exists in workbench.yaml", componentName)
@@ -947,14 +948,14 @@ func scaffoldComponentDirect(templateName, componentPath string, params map[stri
 }
 
 // updateWorkbenchManifestForComponent updates the workbench.yaml file with the new component
-func updateWorkbenchManifestForComponent(manifest *WorkbenchManifest, componentName, templateName, projectRoot string) error {
+func updateWorkbenchManifestForComponent(manifest *manifestPkg.WorkbenchManifest, componentName, templateName, projectRoot string) error {
 	// Initialize Components map if it doesn't exist
 	if manifest.Components == nil {
-		manifest.Components = make(map[string]Component)
+		manifest.Components = make(map[string]manifestPkg.Component)
 	}
 
 	// Add the new component
-	manifest.Components[componentName] = Component{
+	manifest.Components[componentName] = manifestPkg.Component{
 		Template: templateName,
 		Path:     filepath.Join(".", componentName),
 	}

@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"text/template"
 )
@@ -322,6 +321,12 @@ func (tp *TemplateProcessor) executeCommands(projectDir string) error {
 	for i, commandAction := range tp.manifest.PostScaffold.Commands {
 		shouldExecute := true
 
+		// Skip empty commands
+		if strings.TrimSpace(commandAction.Command) == "" {
+			fmt.Printf("[WARN] Skipping empty post-scaffold command at index %d.\n", i)
+			continue
+		}
+
 		// Report progress
 		tp.progress.ReportProgress(fmt.Sprintf("Checking command: %s", commandAction.Description), i+1, len(tp.manifest.PostScaffold.Commands))
 
@@ -330,7 +335,8 @@ func (tp *TemplateProcessor) executeCommands(projectDir string) error {
 			var err error
 			shouldExecute, err = tp.evaluateCondition(commandAction.Condition)
 			if err != nil {
-				return NewTemplateProcessingError("", fmt.Sprintf("Failed to evaluate condition for command '%s'", commandAction.Command), err)
+				fmt.Printf("[WARN] Failed to evaluate condition for command '%s': %v. Skipping.\n", commandAction.Command, err)
+				continue
 			}
 		}
 
@@ -347,7 +353,8 @@ func (tp *TemplateProcessor) executeCommands(projectDir string) error {
 					err = tp.tryPipFallback(commandAction, projectDir)
 				}
 				if err != nil {
-					return NewCommandExecutionError(commandAction.Command, commandAction.Description, err)
+					fmt.Printf("[WARN] Post-scaffold command '%s' failed: %v. Skipping.\n", commandAction.Command, err)
+					continue // Do not abort the whole process
 				}
 			}
 		}
@@ -441,23 +448,11 @@ func (tp *TemplateProcessor) executeCommand(commandAction CommandAction, project
 
 	// Create the command with platform-specific handling
 	var cmd *exec.Cmd
-	var shellArgs []string
 
-	// Determine the shell and arguments based on the operating system
-	switch runtime.GOOS {
-	case "windows":
-		// On Windows, use cmd.exe with /C flag
-		shellArgs = []string{"/C", commandAction.Command}
-		cmd = exec.Command("cmd", shellArgs...)
-	case "darwin":
-		// On macOS, use bash for better compatibility
-		shellArgs = []string{"-c", commandAction.Command}
-		cmd = exec.Command("bash", shellArgs...)
-	default:
-		// On Linux and other Unix-like systems, use sh
-		shellArgs = []string{"-c", commandAction.Command}
-		cmd = exec.Command("sh", shellArgs...)
-	}
+	// Use platform utilities for better cross-platform support
+	platformUtils := NewPlatformUtils()
+	shell, args := platformUtils.GetShellCommand(commandAction.Command)
+	cmd = exec.Command(shell, args...)
 
 	// Set the working directory
 	cmd.Dir = projectDir
@@ -524,14 +519,9 @@ func (tp *TemplateProcessor) tryNpmFallback(commandAction CommandAction, project
 	tp.progress.ReportCommandExecution(fallbackCommand, commandAction.Description+" (with --legacy-peer-deps)")
 
 	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "windows":
-		cmd = exec.Command("cmd", "/C", fallbackCommand)
-	case "darwin":
-		cmd = exec.Command("bash", "-c", fallbackCommand)
-	default:
-		cmd = exec.Command("sh", "-c", fallbackCommand)
-	}
+	platformUtils := NewPlatformUtils()
+	shell, args := platformUtils.GetShellCommand(fallbackCommand)
+	cmd = exec.Command(shell, args...)
 
 	cmd.Dir = projectDir
 	cmd.Env = append(os.Environ(), "CI=true", "NODE_ENV=development")
@@ -546,14 +536,8 @@ func (tp *TemplateProcessor) tryNpmFallback(commandAction CommandAction, project
 	forceCommand := strings.Replace(commandAction.Command, "npm install", "npm install --force", 1)
 	tp.progress.ReportCommandExecution(forceCommand, commandAction.Description+" (with --force)")
 
-	switch runtime.GOOS {
-	case "windows":
-		cmd = exec.Command("cmd", "/C", forceCommand)
-	case "darwin":
-		cmd = exec.Command("bash", "-c", forceCommand)
-	default:
-		cmd = exec.Command("sh", "-c", forceCommand)
-	}
+	shell, args = platformUtils.GetShellCommand(forceCommand)
+	cmd = exec.Command(shell, args...)
 
 	cmd.Dir = projectDir
 	cmd.Env = append(os.Environ(), "CI=true", "NODE_ENV=development")
@@ -575,14 +559,9 @@ func (tp *TemplateProcessor) tryPipFallback(commandAction CommandAction, project
 	tp.progress.ReportCommandExecution(fallbackCommand, commandAction.Description+" (with --user flag)")
 
 	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "windows":
-		cmd = exec.Command("cmd", "/C", fallbackCommand)
-	case "darwin":
-		cmd = exec.Command("bash", "-c", fallbackCommand)
-	default:
-		cmd = exec.Command("sh", "-c", fallbackCommand)
-	}
+	platformUtils := NewPlatformUtils()
+	shell, args := platformUtils.GetShellCommand(fallbackCommand)
+	cmd = exec.Command(shell, args...)
 
 	cmd.Dir = projectDir
 	cmd.Env = append(os.Environ(), "CI=true")
@@ -597,14 +576,8 @@ func (tp *TemplateProcessor) tryPipFallback(commandAction CommandAction, project
 	noCacheCommand := strings.Replace(commandAction.Command, "pip install", "pip install --no-cache-dir", 1)
 	tp.progress.ReportCommandExecution(noCacheCommand, commandAction.Description+" (with --no-cache-dir)")
 
-	switch runtime.GOOS {
-	case "windows":
-		cmd = exec.Command("cmd", "/C", noCacheCommand)
-	case "darwin":
-		cmd = exec.Command("bash", "-c", noCacheCommand)
-	default:
-		cmd = exec.Command("sh", "-c", noCacheCommand)
-	}
+	shell, args = platformUtils.GetShellCommand(noCacheCommand)
+	cmd = exec.Command(shell, args...)
 
 	cmd.Dir = projectDir
 	cmd.Env = append(os.Environ(), "CI=true")
@@ -619,14 +592,8 @@ func (tp *TemplateProcessor) tryPipFallback(commandAction CommandAction, project
 	pythonPipCommand := strings.Replace(commandAction.Command, "pip install", "python -m pip install", 1)
 	tp.progress.ReportCommandExecution(pythonPipCommand, commandAction.Description+" (using python -m pip)")
 
-	switch runtime.GOOS {
-	case "windows":
-		cmd = exec.Command("cmd", "/C", pythonPipCommand)
-	case "darwin":
-		cmd = exec.Command("bash", "-c", pythonPipCommand)
-	default:
-		cmd = exec.Command("sh", "-c", pythonPipCommand)
-	}
+	shell, args = platformUtils.GetShellCommand(pythonPipCommand)
+	cmd = exec.Command(shell, args...)
 
 	cmd.Dir = projectDir
 	cmd.Env = append(os.Environ(), "CI=true")

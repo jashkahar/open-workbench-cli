@@ -37,7 +37,6 @@ Features:
 	// Add subcommands
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(listTemplatesCmd) // Top-level command
-	// fmt.Printf("DEBUG: initCmd and listTemplatesCmd registered\n")
 
 	// Force inclusion of add_service.go by calling functions from it
 	_ = runAddService
@@ -48,10 +47,18 @@ Features:
 	// Initialize add commands
 	initAddCommands()
 	rootCmd.AddCommand(addCmd)
-	// fmt.Printf("DEBUG: addCmd registered\n")
+
+	// Initialize add resource command
+	initAddResourceCommand()
 
 	// Initialize compose command
 	initComposeCommand()
+
+	// Initialize ls command
+	initLsCommand()
+
+	// Initialize delete command
+	initDeleteCommand()
 
 	err := rootCmd.Execute()
 	if err != nil {
