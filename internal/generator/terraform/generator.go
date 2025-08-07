@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jashkahar/open-workbench-platform/internal/manifest"
+	manifestPkg "github.com/jashkahar/open-workbench-platform/internal/manifest"
 )
 
 // Generator implements the Generator interface for Terraform
@@ -28,7 +28,7 @@ func (g *Generator) Description() string {
 }
 
 // Validate checks if the manifest is compatible with this generator
-func (g *Generator) Validate(manifest *manifest.WorkbenchManifest) error {
+func (g *Generator) Validate(manifest *manifestPkg.WorkbenchManifest) error {
 	if manifest == nil {
 		return fmt.Errorf("manifest cannot be nil")
 	}
@@ -50,7 +50,7 @@ func (g *Generator) Validate(manifest *manifest.WorkbenchManifest) error {
 }
 
 // Generate creates the Terraform configuration for the given manifest
-func (g *Generator) Generate(manifest *manifest.WorkbenchManifest) error {
+func (g *Generator) Generate(manifest *manifestPkg.WorkbenchManifest) error {
 	// Validate the manifest
 	if err := g.Validate(manifest); err != nil {
 		return fmt.Errorf("manifest validation failed: %w", err)
@@ -64,23 +64,41 @@ func (g *Generator) Generate(manifest *manifest.WorkbenchManifest) error {
 		return fmt.Errorf("failed to create terraform directory: %w", err)
 	}
 
+	// Get the first environment (for now, we'll use the first one)
+	var targetEnv string
+	var targetEnvConfig manifestPkg.Environment
+	for envName, envConfig := range manifest.Environments {
+		targetEnv = envName
+		targetEnvConfig = envConfig
+		break
+	}
+
+	// Get services for this environment
+	servicesForEnv := g.getServicesForEnvironment(manifest.Services, targetEnvConfig)
+
+	if len(servicesForEnv) == 0 {
+		return fmt.Errorf("no services configured for environment '%s'", targetEnv)
+	}
+
+	fmt.Printf("📋 Generating infrastructure for %d services in '%s' environment\n", len(servicesForEnv), targetEnv)
+
 	// Generate main.tf
-	if err := g.generateMainTf(manifest, terraformDir); err != nil {
+	if err := g.generateMainTf(manifest, terraformDir, servicesForEnv, targetEnvConfig); err != nil {
 		return fmt.Errorf("failed to generate main.tf: %w", err)
 	}
 
 	// Generate variables.tf
-	if err := g.generateVariablesTf(manifest, terraformDir); err != nil {
+	if err := g.generateVariablesTf(manifest, terraformDir, servicesForEnv); err != nil {
 		return fmt.Errorf("failed to generate variables.tf: %w", err)
 	}
 
 	// Generate outputs.tf
-	if err := g.generateOutputsTf(manifest, terraformDir); err != nil {
+	if err := g.generateOutputsTf(manifest, terraformDir, servicesForEnv); err != nil {
 		return fmt.Errorf("failed to generate outputs.tf: %w", err)
 	}
 
 	// Generate terraform.tfvars.example
-	if err := g.generateTfvarsExample(manifest, terraformDir); err != nil {
+	if err := g.generateTfvarsExample(manifest, terraformDir, servicesForEnv); err != nil {
 		return fmt.Errorf("failed to generate terraform.tfvars.example: %w", err)
 	}
 
@@ -92,7 +110,28 @@ func (g *Generator) Generate(manifest *manifest.WorkbenchManifest) error {
 	return nil
 }
 
-func (g *Generator) generateMainTf(manifest *manifest.WorkbenchManifest, terraformDir string) error {
+// getServicesForEnvironment filters services based on environment configuration
+func (g *Generator) getServicesForEnvironment(allServices map[string]manifestPkg.Service, envConfig manifestPkg.Environment) map[string]manifestPkg.Service {
+	servicesForEnv := make(map[string]manifestPkg.Service)
+
+	// If no services are specified in environment config, include all services
+	if envConfig.Config == nil || envConfig.Config["services"] == "" {
+		return allServices
+	}
+
+	// Parse services from environment config
+	serviceList := strings.Split(envConfig.Config["services"], ",")
+	for _, serviceName := range serviceList {
+		serviceName = strings.TrimSpace(serviceName)
+		if service, exists := allServices[serviceName]; exists {
+			servicesForEnv[serviceName] = service
+		}
+	}
+
+	return servicesForEnv
+}
+
+func (g *Generator) generateMainTf(manifest *manifestPkg.WorkbenchManifest, terraformDir string, servicesForEnv map[string]manifestPkg.Service, envConfig manifestPkg.Environment) error {
 	content := `# Terraform configuration for ` + manifest.Metadata.Name + `
 
 terraform {
@@ -201,8 +240,9 @@ resource "aws_ecs_cluster" "main" {
   }
 }
 
-# Application Load Balancer
+# Application Load Balancer (only if we have web services)
 resource "aws_lb" "main" {
+  count              = var.create_load_balancer ? 1 : 0
   name               = "${var.project_name}-alb"
   internal           = false
   load_balancer_type = "application"
@@ -215,7 +255,8 @@ resource "aws_lb" "main" {
 }
 
 resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.main.arn
+  count             = var.create_load_balancer ? 1 : 0
+  load_balancer_arn = aws_lb.main[0].arn
   port              = "80"
   protocol          = "HTTP"
 
@@ -234,11 +275,11 @@ resource "aws_lb_listener" "http" {
 `
 
 	// Add service-specific resources
-	for serviceName, service := range manifest.Services {
+	for serviceName, service := range servicesForEnv {
 		content += g.generateServiceResources(serviceName, service)
 	}
 
-	// Add component-specific resources
+	// Add component-specific resources (only if they exist)
 	for componentName, component := range manifest.Components {
 		content += g.generateComponentResources(componentName, component)
 	}
@@ -246,7 +287,10 @@ resource "aws_lb_listener" "http" {
 	return os.WriteFile(filepath.Join(terraformDir, "main.tf"), []byte(content), 0644)
 }
 
-func (g *Generator) generateServiceResources(serviceName string, service manifest.Service) string {
+func (g *Generator) generateServiceResources(serviceName string, service manifestPkg.Service) string {
+	// Determine if this is a web service (has a port)
+	isWebService := service.Port > 0
+
 	// Generate ECS service
 	ecsService := fmt.Sprintf(`
 # Service: %s
@@ -260,7 +304,11 @@ resource "aws_ecs_service" "%s" {
     subnets         = [aws_subnet.public.id]
     security_groups = [aws_security_group.app.id]
   }
+`, serviceName, serviceName, serviceName, serviceName, serviceName)
 
+	// Add load balancer configuration only for web services
+	if isWebService {
+		ecsService += fmt.Sprintf(`
   load_balancer {
     target_group_arn = aws_lb_target_group.%s.arn
     container_name   = "%s"
@@ -268,12 +316,15 @@ resource "aws_ecs_service" "%s" {
   }
 
   depends_on = [aws_lb_listener.http]
+`, serviceName, serviceName, service.Port)
+	}
 
+	ecsService += fmt.Sprintf(`
   tags = {
     Name = "%s"
   }
 }
-`, serviceName, serviceName, serviceName, serviceName, serviceName, serviceName, serviceName, service.Port, serviceName)
+`, serviceName)
 
 	// Generate ECS task definition
 	taskDefinition := fmt.Sprintf(`
@@ -288,13 +339,20 @@ resource "aws_ecs_task_definition" "%s" {
     {
       name  = "%s"
       image = var.%s_image
-      portMappings = [
+`, serviceName, serviceName, serviceName, serviceName, serviceName, serviceName)
+
+	// Add port mappings only for web services
+	if isWebService {
+		taskDefinition += fmt.Sprintf(`      portMappings = [
         {
           containerPort = %d
           protocol      = "tcp"
         }
       ]
-      environment = [
+`, service.Port)
+	}
+
+	taskDefinition += fmt.Sprintf(`      environment = [
         {
           name  = "NODE_ENV"
           value = "production"
@@ -315,10 +373,12 @@ resource "aws_ecs_task_definition" "%s" {
     Name = "%s"
   }
 }
-`, serviceName, serviceName, serviceName, serviceName, serviceName, serviceName, service.Port, serviceName, serviceName)
+`, serviceName, serviceName)
 
-	// Generate load balancer target group
-	targetGroup := fmt.Sprintf(`
+	// Generate load balancer target group only for web services
+	var targetGroup string
+	if isWebService {
+		targetGroup = fmt.Sprintf(`
 resource "aws_lb_target_group" "%s" {
   name     = "%s-tg"
   port     = %d
@@ -342,11 +402,12 @@ resource "aws_lb_target_group" "%s" {
   }
 }
 `, serviceName, serviceName, service.Port, serviceName)
+	}
 
 	return ecsService + taskDefinition + targetGroup
 }
 
-func (g *Generator) generateComponentResources(componentName string, component manifest.Component) string {
+func (g *Generator) generateComponentResources(componentName string, component manifestPkg.Component) string {
 	content := fmt.Sprintf(`
 # Component: %s
 resource "aws_ecs_service" "%s" {
@@ -409,7 +470,7 @@ resource "aws_ecs_task_definition" "%s" {
 	return content
 }
 
-func (g *Generator) generateVariablesTf(manifest *manifest.WorkbenchManifest, terraformDir string) error {
+func (g *Generator) generateVariablesTf(manifest *manifestPkg.WorkbenchManifest, terraformDir string, servicesForEnv map[string]manifestPkg.Service) error {
 	content := `# Variables for ` + manifest.Metadata.Name + `
 
 variable "aws_region" {
@@ -442,10 +503,16 @@ variable "availability_zone" {
   default     = "us-east-1a"
 }
 
+variable "create_load_balancer" {
+  description = "Whether to create a load balancer"
+  type        = bool
+  default     = true
+}
+
 `
 
-	// Add variables for each service
-	for serviceName := range manifest.Services {
+	// Add variables for each service in the environment
+	for serviceName := range servicesForEnv {
 		content += fmt.Sprintf(`
 variable "%s_desired_count" {
   description = "Desired count for %s service"
@@ -507,17 +574,12 @@ variable "%s_image" {
 	return os.WriteFile(filepath.Join(terraformDir, "variables.tf"), []byte(content), 0644)
 }
 
-func (g *Generator) generateOutputsTf(manifest *manifest.WorkbenchManifest, terraformDir string) error {
+func (g *Generator) generateOutputsTf(manifest *manifestPkg.WorkbenchManifest, terraformDir string, servicesForEnv map[string]manifestPkg.Service) error {
 	content := `# Outputs for ` + manifest.Metadata.Name + `
 
 output "vpc_id" {
   description = "VPC ID"
   value       = aws_vpc.main.id
-}
-
-output "alb_dns_name" {
-  description = "Application Load Balancer DNS name"
-  value       = aws_lb.main.dns_name
 }
 
 output "ecs_cluster_name" {
@@ -527,8 +589,17 @@ output "ecs_cluster_name" {
 
 `
 
-	// Add outputs for each service
-	for serviceName := range manifest.Services {
+	// Add load balancer output only if we're creating one
+	content += `
+output "alb_dns_name" {
+  description = "Application Load Balancer DNS name"
+  value       = var.create_load_balancer ? aws_lb.main[0].dns_name : null
+}
+
+`
+
+	// Add outputs for each service in the environment
+	for serviceName := range servicesForEnv {
 		content += fmt.Sprintf(`
 output "%s_service_name" {
   description = "%s service name"
@@ -546,7 +617,7 @@ output "%s_task_definition_arn" {
 	return os.WriteFile(filepath.Join(terraformDir, "outputs.tf"), []byte(content), 0644)
 }
 
-func (g *Generator) generateTfvarsExample(manifest *manifest.WorkbenchManifest, terraformDir string) error {
+func (g *Generator) generateTfvarsExample(manifest *manifestPkg.WorkbenchManifest, terraformDir string, servicesForEnv map[string]manifestPkg.Service) error {
 	content := `# Example terraform.tfvars for ` + manifest.Metadata.Name + `
 
 aws_region = "us-east-1"
@@ -554,11 +625,12 @@ project_name = "` + manifest.Metadata.Name + `"
 vpc_cidr = "10.0.0.0/16"
 public_subnet_cidr = "10.0.1.0/24"
 availability_zone = "us-east-1a"
+create_load_balancer = true
 
 `
 
-	// Add example values for each service
-	for serviceName := range manifest.Services {
+	// Add example values for each service in the environment
+	for serviceName := range servicesForEnv {
 		content += fmt.Sprintf(`
 # %s service configuration
 %s_desired_count = 1
@@ -613,6 +685,7 @@ func printTerraformSuccessMessage() {
 	fmt.Println("  • Set up AWS credentials before running terraform")
 	fmt.Println("  • Use terraform.tfvars for environment-specific values")
 	fmt.Println("  • Consider using remote state storage for team collaboration")
+	fmt.Println("  • Only services configured for your environment will be deployed")
 
 	fmt.Println("\n🎉 Your cloud infrastructure configuration is ready!")
 }

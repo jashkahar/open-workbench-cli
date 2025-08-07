@@ -8,7 +8,8 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/jashkahar/open-workbench-platform/internal/generator"
 	"github.com/jashkahar/open-workbench-platform/internal/generator/docker"
-	"github.com/jashkahar/open-workbench-platform/internal/generator/terraform"
+
+	// "github.com/jashkahar/open-workbench-platform/internal/generator/terraform" // Temporarily disabled
 	manifestPkg "github.com/jashkahar/open-workbench-platform/internal/manifest"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -21,14 +22,14 @@ var composeCmd = &cobra.Command{
 
 This command supports multiple deployment targets:
 - docker: Generate Docker Compose configuration for local development
-- terraform: Generate Terraform configuration for cloud infrastructure
+- terraform: Generate Terraform configuration for cloud infrastructure (temporarily disabled)
 
 Interactive Mode (no target specified):
   om compose
 
 Direct Mode (with target specified):
   om compose --target docker
-  om compose --target terraform
+  # om compose --target terraform (temporarily disabled)
 
 Examples:
   # Interactive mode - prompts for target selection
@@ -37,12 +38,11 @@ Examples:
   # Direct mode with Docker target
   om compose --target docker
 
-  # Direct mode with Terraform target
-  om compose --target terraform
+  # Direct mode with Terraform target (temporarily disabled)
+  # om compose --target terraform
 
 The generated configuration will be based on your workbench.yaml file and
-the selected target. For Terraform generation, ensure you have configured
-environments in your workbench.yaml file.`,
+the selected target.`,
 	RunE: runCompose,
 }
 
@@ -53,9 +53,9 @@ func initComposeCommand() {
 	}
 
 	// Add target flag
-	composeCmd.Flags().String("target", "", "Deployment target (docker, terraform)")
+	composeCmd.Flags().String("target", "", "Deployment target (docker)")
 	// Add environment flag for Terraform
-	composeCmd.Flags().String("env", "", "Environment name (dev, staging, prod) - required for Terraform")
+	composeCmd.Flags().String("env", "", "Environment name (dev, staging, prod)")
 }
 
 func runCompose(cmd *cobra.Command, args []string) error {
@@ -82,26 +82,26 @@ func runCompose(cmd *cobra.Command, args []string) error {
 	}
 
 	// For Terraform, handle environment configuration
-	if target == "terraform" {
-		if err := handleTerraformEnvironment(cmd, manifest); err != nil {
-			return fmt.Errorf("failed to configure environment: %w", err)
-		}
-	}
+	// if target == "terraform" { // Temporarily disabled
+	// 	if err := handleTerraformEnvironment(cmd, manifest); err != nil {
+	// 		return fmt.Errorf("failed to configure environment: %w", err)
+	// 	}
+	// }
 
 	// Create generator registry
 	registry := generator.NewRegistry()
 
 	// Register generators
 	dockerGen := docker.NewGenerator()
-	terraformGen := terraform.NewGenerator()
+	// terraformGen := terraform.NewGenerator() // Temporarily disabled
 
 	if err := registry.Register(dockerGen); err != nil {
 		return fmt.Errorf("failed to register Docker generator: %w", err)
 	}
 
-	if err := registry.Register(terraformGen); err != nil {
-		return fmt.Errorf("failed to register Terraform generator: %w", err)
-	}
+	// if err := registry.Register(terraformGen); err != nil {
+	// 	return fmt.Errorf("failed to register Terraform generator: %w", err)
+	// }
 
 	// Get the selected generator
 	gen, err := registry.Get(target)
@@ -219,7 +219,7 @@ func getTarget(cmd *cobra.Command) (string, error) {
 
 	// If target is provided, validate it
 	if target != "" {
-		validTargets := []string{"docker", "terraform"}
+		validTargets := []string{"docker"} // Temporarily disabled terraform
 		for _, valid := range validTargets {
 			if target == valid {
 				return target, nil
@@ -234,7 +234,7 @@ func getTarget(cmd *cobra.Command) (string, error) {
 		Message: "Which target would you like to compose for?",
 		Options: []string{
 			"docker - Generate Docker Compose configuration for local development",
-			"terraform - Generate Terraform configuration for cloud infrastructure",
+			// "terraform - Generate Terraform configuration for cloud infrastructure", // Temporarily disabled
 		},
 		Help: "Select the deployment target for your configuration",
 	}

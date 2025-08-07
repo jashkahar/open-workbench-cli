@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/jashkahar/open-workbench-platform/internal/manifest"
+	manifestPkg "github.com/jashkahar/open-workbench-platform/internal/manifest"
 )
 
 func TestNewGenerator(t *testing.T) {
@@ -36,23 +36,23 @@ func TestGenerator_Validate(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		manifest *manifest.WorkbenchManifest
+		manifest *manifestPkg.WorkbenchManifest
 		wantErr  bool
 	}{
 		{
 			name: "valid manifest",
-			manifest: &manifest.WorkbenchManifest{
-				Metadata: manifest.ProjectMetadata{
+			manifest: &manifestPkg.WorkbenchManifest{
+				Metadata: manifestPkg.ProjectMetadata{
 					Name: "test-project",
 				},
-				Services: map[string]manifest.Service{
+				Services: map[string]manifestPkg.Service{
 					"frontend": {
 						Template: "react-typescript",
 						Path:     "frontend",
 						Port:     3000,
 					},
 				},
-				Environments: map[string]manifest.Environment{
+				Environments: map[string]manifestPkg.Environment{
 					"production": {
 						Provider: "aws",
 						Region:   "us-east-1",
@@ -68,15 +68,15 @@ func TestGenerator_Validate(t *testing.T) {
 		},
 		{
 			name: "missing project name",
-			manifest: &manifest.WorkbenchManifest{
-				Metadata: manifest.ProjectMetadata{},
-				Services: map[string]manifest.Service{
+			manifest: &manifestPkg.WorkbenchManifest{
+				Metadata: manifestPkg.ProjectMetadata{},
+				Services: map[string]manifestPkg.Service{
 					"frontend": {
 						Template: "react-typescript",
 						Path:     "frontend",
 					},
 				},
-				Environments: map[string]manifest.Environment{
+				Environments: map[string]manifestPkg.Environment{
 					"production": {
 						Provider: "aws",
 					},
@@ -86,12 +86,12 @@ func TestGenerator_Validate(t *testing.T) {
 		},
 		{
 			name: "no services",
-			manifest: &manifest.WorkbenchManifest{
-				Metadata: manifest.ProjectMetadata{
+			manifest: &manifestPkg.WorkbenchManifest{
+				Metadata: manifestPkg.ProjectMetadata{
 					Name: "test-project",
 				},
-				Services: map[string]manifest.Service{},
-				Environments: map[string]manifest.Environment{
+				Services: map[string]manifestPkg.Service{},
+				Environments: map[string]manifestPkg.Environment{
 					"production": {
 						Provider: "aws",
 					},
@@ -101,17 +101,17 @@ func TestGenerator_Validate(t *testing.T) {
 		},
 		{
 			name: "no environments",
-			manifest: &manifest.WorkbenchManifest{
-				Metadata: manifest.ProjectMetadata{
+			manifest: &manifestPkg.WorkbenchManifest{
+				Metadata: manifestPkg.ProjectMetadata{
 					Name: "test-project",
 				},
-				Services: map[string]manifest.Service{
+				Services: map[string]manifestPkg.Service{
 					"frontend": {
 						Template: "react-typescript",
 						Path:     "frontend",
 					},
 				},
-				Environments: map[string]manifest.Environment{},
+				Environments: map[string]manifestPkg.Environment{},
 			},
 			wantErr: true,
 		},
@@ -148,11 +148,11 @@ func TestGenerator_Generate(t *testing.T) {
 		t.Fatalf("failed to change directory: %v", err)
 	}
 
-	manifest := &manifest.WorkbenchManifest{
-		Metadata: manifest.ProjectMetadata{
+	manifest := &manifestPkg.WorkbenchManifest{
+		Metadata: manifestPkg.ProjectMetadata{
 			Name: "test-project",
 		},
-		Services: map[string]manifest.Service{
+		Services: map[string]manifestPkg.Service{
 			"frontend": {
 				Template: "react-typescript",
 				Path:     "frontend",
@@ -164,14 +164,14 @@ func TestGenerator_Generate(t *testing.T) {
 				Port:     8080,
 			},
 		},
-		Components: map[string]manifest.Component{
+		Components: map[string]manifestPkg.Component{
 			"gateway": {
 				Template: "nginx-gateway",
 				Path:     "gateway",
 				Ports:    []string{"80", "443"},
 			},
 		},
-		Environments: map[string]manifest.Environment{
+		Environments: map[string]manifestPkg.Environment{
 			"production": {
 				Provider: "aws",
 				Region:   "us-east-1",
@@ -206,7 +206,7 @@ func TestGenerator_Generate(t *testing.T) {
 func TestGenerator_generateServiceResources(t *testing.T) {
 	generator := NewGenerator()
 
-	service := manifest.Service{
+	service := manifestPkg.Service{
 		Template: "react-typescript",
 		Path:     "frontend",
 		Port:     3000,
@@ -238,7 +238,7 @@ func TestGenerator_generateServiceResources(t *testing.T) {
 func TestGenerator_generateComponentResources(t *testing.T) {
 	generator := NewGenerator()
 
-	component := manifest.Component{
+	component := manifestPkg.Component{
 		Template: "nginx-gateway",
 		Path:     "gateway",
 		Ports:    []string{"80", "443"},
@@ -270,18 +270,18 @@ func TestGenerator_generateVariablesTf(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	manifest := &manifest.WorkbenchManifest{
-		Metadata: manifest.ProjectMetadata{
+	manifest := &manifestPkg.WorkbenchManifest{
+		Metadata: manifestPkg.ProjectMetadata{
 			Name: "test-project",
 		},
-		Services: map[string]manifest.Service{
+		Services: map[string]manifestPkg.Service{
 			"frontend": {
 				Template: "react-typescript",
 				Path:     "frontend",
 				Port:     3000,
 			},
 		},
-		Components: map[string]manifest.Component{
+		Components: map[string]manifestPkg.Component{
 			"gateway": {
 				Template: "nginx-gateway",
 				Path:     "gateway",
@@ -289,7 +289,12 @@ func TestGenerator_generateVariablesTf(t *testing.T) {
 		},
 	}
 
-	err = generator.generateVariablesTf(manifest, tempDir)
+	// Create servicesForEnv map for testing
+	servicesForEnv := map[string]manifestPkg.Service{
+		"frontend": manifest.Services["frontend"],
+	}
+
+	err = generator.generateVariablesTf(manifest, tempDir, servicesForEnv)
 	if err != nil {
 		t.Fatalf("generateVariablesTf() failed: %v", err)
 	}
@@ -337,11 +342,11 @@ func TestGenerator_generateOutputsTf(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	manifest := &manifest.WorkbenchManifest{
-		Metadata: manifest.ProjectMetadata{
+	manifest := &manifestPkg.WorkbenchManifest{
+		Metadata: manifestPkg.ProjectMetadata{
 			Name: "test-project",
 		},
-		Services: map[string]manifest.Service{
+		Services: map[string]manifestPkg.Service{
 			"frontend": {
 				Template: "react-typescript",
 				Path:     "frontend",
@@ -350,7 +355,12 @@ func TestGenerator_generateOutputsTf(t *testing.T) {
 		},
 	}
 
-	err = generator.generateOutputsTf(manifest, tempDir)
+	// Create servicesForEnv map for testing
+	servicesForEnv := map[string]manifestPkg.Service{
+		"frontend": manifest.Services["frontend"],
+	}
+
+	err = generator.generateOutputsTf(manifest, tempDir, servicesForEnv)
 	if err != nil {
 		t.Fatalf("generateOutputsTf() failed: %v", err)
 	}
@@ -393,18 +403,18 @@ func TestGenerator_generateTfvarsExample(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	manifest := &manifest.WorkbenchManifest{
-		Metadata: manifest.ProjectMetadata{
+	manifest := &manifestPkg.WorkbenchManifest{
+		Metadata: manifestPkg.ProjectMetadata{
 			Name: "test-project",
 		},
-		Services: map[string]manifest.Service{
+		Services: map[string]manifestPkg.Service{
 			"frontend": {
 				Template: "react-typescript",
 				Path:     "frontend",
 				Port:     3000,
 			},
 		},
-		Components: map[string]manifest.Component{
+		Components: map[string]manifestPkg.Component{
 			"gateway": {
 				Template: "nginx-gateway",
 				Path:     "gateway",
@@ -412,7 +422,12 @@ func TestGenerator_generateTfvarsExample(t *testing.T) {
 		},
 	}
 
-	err = generator.generateTfvarsExample(manifest, tempDir)
+	// Create servicesForEnv map for testing
+	servicesForEnv := map[string]manifestPkg.Service{
+		"frontend": manifest.Services["frontend"],
+	}
+
+	err = generator.generateTfvarsExample(manifest, tempDir, servicesForEnv)
 	if err != nil {
 		t.Fatalf("generateTfvarsExample() failed: %v", err)
 	}
