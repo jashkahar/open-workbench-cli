@@ -83,8 +83,8 @@ scoop install open-workbench-platform
 
    **Available flags:**
 
-   - `--target`: Specify deployment target (`docker` or `terraform`)
-   - `--env`: Environment name for Terraform (`dev`, `staging`, `prod`)
+   - `--target`: Specify deployment target (`docker`)
+   - `--env`: Environment name (`dev`, `staging`, `prod`)
 
    **Examples:**
 
@@ -94,9 +94,6 @@ scoop install open-workbench-platform
 
    # Generate Docker Compose for local development
    om compose --target docker
-
-   # Generate Terraform configuration for cloud deployment
-   om compose --target terraform --env dev
    ```
 
    **Deployment Targets:**

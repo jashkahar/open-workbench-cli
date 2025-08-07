@@ -25,8 +25,12 @@ help:
 build:
 	@echo "Building for current platform..."
 	@mkdir -p bin
-	go build -o bin/om main.go
-	@echo "✅ Build complete: bin/om"
+	@if [ "$(OS)" = "Windows_NT" ]; then \
+		go build -o bin/open-workbench-platform.exe main.go; \
+	else \
+		go build -o bin/open-workbench-platform main.go; \
+	fi
+	@echo "✅ Build complete: bin/open-workbench-platform$(if $(filter Windows_NT,$(OS)),.exe)"
 
 # Build for all platforms
 build-all:
@@ -53,8 +57,19 @@ test-coverage:
 # Clean build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
-	rm -rf bin/
-	rm -f coverage.out coverage.html
+	@if [ "$(OS)" = "Windows_NT" ]; then \
+		if command -v rm >/dev/null 2>&1; then \
+			rm -rf bin/; \
+			rm -f coverage.out coverage.html; \
+		else \
+			rmdir /s /q bin 2>nul || true; \
+			del coverage.out 2>nul || true; \
+			del coverage.html 2>nul || true; \
+		fi; \
+	else \
+		rm -rf bin/; \
+		rm -f coverage.out coverage.html; \
+	fi
 	@echo "✅ Clean complete"
 
 # Install dependencies
@@ -83,11 +98,12 @@ format:
 install: build
 	@echo "Installing binary..."
 	@if [ "$(OS)" = "Windows_NT" ]; then \
-		copy bin\om.exe C:\Windows\System32\om.exe; \
+		echo "⚠️  For Windows, please add bin/ to your PATH or run the binary directly"; \
+		echo "✅ Binary available at: bin/open-workbench-platform.exe"; \
 	else \
-		sudo cp bin/om /usr/local/bin/om; \
+		sudo cp bin/open-workbench-platform /usr/local/bin/open-workbench-platform; \
+		echo "✅ Installation complete"; \
 	fi
-	@echo "✅ Installation complete"
 
 # Development setup
 dev-setup: deps format lint test
