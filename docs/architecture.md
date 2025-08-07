@@ -1,499 +1,307 @@
-# Architecture Overview
+# System Architecture
 
-This document provides a comprehensive overview of the Open Workbench CLI architecture, including system design, components, data flow, and technical decisions.
+This document provides an in-depth look at the Open Workbench Platform's architecture, core logic, and design patterns.
 
-## 🏗️ System Architecture
+## High-Level System Overview
 
-### High-Level Overview
+Open Workbench Platform is a CLI tool that automates the creation of multi-service applications. The system consists of several key components:
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   User Input    │    │   Template      │    │   Output        │
-│                 │    │   Processing    │    │                 │
-│ • CLI Args      │───▶│ • Discovery     │───▶│ • Project       │
-│ • TUI           │    │ • Parameters    │    │ • Files         │
-│ • Interactive   │    │ • Processing    │    │ • Commands      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
+- **Command Layer** (`cmd/`): CLI commands and user interaction
+- **Templating Engine** (`internal/templating/`): Dynamic template processing
+- **Manifest System** (`internal/manifest/`): Project configuration management
+- **Generator System** (`internal/generator/`): Deployment configuration generation
+- **Security Layer** (`cmd/security.go`): Input validation and sanitization
 
-### Core Components
+## Core Components
 
-#### 1. Main Application (`main.go`)
+### Command Layer (`cmd/`)
 
-**Purpose**: Entry point and orchestration layer
+The command layer is built using the Cobra framework and provides the following commands:
 
-**Responsibilities**:
+#### `om init`
+- **Purpose**: Initialize a new Open Workbench project
+- **Process**: 
+  1. Validates directory safety
+  2. Prompts for project details
+  3. Creates project structure
+  4. Generates `workbench.yaml` manifest
+- **Key Files**: `cmd/init.go`
 
-- Parse command-line arguments
-- Route to appropriate execution mode (TUI, interactive, non-interactive)
-- Coordinate the scaffolding process
-- Handle user interaction and error reporting
+#### `om add service`
+- **Purpose**: Add a new service to an existing project
+- **Modes**: Interactive and direct (with flags)
+- **Process**:
+  1. Loads existing `workbench.yaml`
+  2. Validates service name uniqueness
+  3. Scaffolds service using template
+  4. Updates manifest file
+- **Key Files**: `cmd/add_service.go`
 
-**Key Functions**:
+#### `om add component`
+- **Purpose**: Add shared infrastructure components
+- **Process**: Similar to add service but for components
+- **Key Files**: `cmd/add_service.go` (shared logic)
 
-- `main()`: Application entry point
+#### `om compose`
+- **Purpose**: Generate deployment configurations
+- **Targets**: Docker Compose, Terraform
+- **Process**:
+  1. Loads `workbench.yaml`
+  2. Selects target (docker/terraform)
+  3. Generates configuration files
+- **Key Files**: `cmd/compose.go`
 
-- `runInteractiveScaffold()`: Interactive mode execution
-- `runCLICreate()`: CLI mode execution
-- `scaffoldAndApplyDynamic()`: Core scaffolding logic
+#### `om ls`
+- **Purpose**: List project services and components
+- **Process**: Reads and displays `workbench.yaml` contents
+- **Key Files**: `cmd/ls.go`
 
-#### 2. Terminal User Interface (`tui.go`)
+#### `om delete`
+- **Purpose**: Remove services or components
+- **Process**: Updates manifest and removes files
+- **Key Files**: `cmd/delete.go`
 
-**Purpose**: Interactive template selection interface
+### Templating Engine (`internal/templating/`)
 
-**Responsibilities**:
+The templating engine is the core of the system, providing dynamic template processing with conditional logic.
 
-- Present available templates in a user-friendly interface
-- Handle user navigation and selection
-- Integrate with template discovery system
-- Provide visual feedback during selection
+#### Key Components
 
-**Key Components**:
+**TemplateProcessor** (`processor.go`):
+- Processes template files with Go template syntax
+- Handles conditional logic (`{{ if .Condition }}`)
+- Manages post-scaffolding actions
+- Provides progress reporting
 
-- `model`: TUI state management
-- `item`: Template representation in the list
-- `runTUI()`: Main TUI execution function
+**Parameter System** (`parameters.go`):
+- Defines parameter types (string, boolean, select, multi-select)
+- Handles parameter validation and grouping
+- Manages interactive prompting
 
-**Dependencies**:
+**Discovery System** (`discovery.go`):
+- Discovers available templates
+- Loads template manifests (`template.json`)
+- Validates template structure
 
-#### 3. CLI Mode (`main.go`)
+#### Template Processing Flow
 
-**Purpose**: Non-interactive command-line interface
+1. **Discovery**: Find available templates in embedded filesystem
+2. **Parameter Collection**: Interactive or direct parameter gathering
+3. **Validation**: Validate parameters against template requirements
+4. **Processing**: Apply template with collected parameters
+5. **Post-Actions**: Execute conditional file deletions and commands
 
-**Responsibilities**:
+### Manifest System (`internal/manifest/`)
 
-- Parse command-line arguments and flags
-- Validate required parameters
-- Execute scaffolding without user interaction
-- Provide comprehensive help and error messages
+The manifest system manages project configuration through `workbench.yaml` files.
 
-**Key Functions**:
+#### WorkbenchManifest Structure
 
-- `runCLICreate()`: Main CLI mode execution
-- Flag parsing and validation
-- Parameter value mapping from flags
-- Error handling with help guidance
-
-**Features**:
-
-- Support for all template options via flags
-- Optional git initialization (`--no-git`)
-- Optional dependency installation (`--no-install-deps`)
-- Conditional feature flags (`--no-testing`, `--no-tailwind`, etc.)
-- Comprehensive help system with examples
-
-#### 3. Dynamic Templating System (`internal/templating/`)
-
-##### Discovery (`discovery.go`)
-
-**Purpose**: Template discovery and validation
-
-**Responsibilities**:
-
-- Scan embedded filesystem for available templates
-- Load and parse template manifests
-- Validate template structure and parameters
-- Provide template metadata
-
-**Key Functions**:
-
-- `DiscoverTemplates()`: Find all available templates
-- `LoadTemplateManifest()`: Parse template.json files
-- `ValidateTemplate()`: Validate template structure
-- `GetTemplateInfo()`: Get specific template information
-
-##### Parameters (`parameters.go`)
-
-**Purpose**: Parameter collection and validation
-
-**Responsibilities**:
-
-- Collect user input for template parameters
-- Validate parameter values against rules
-- Handle conditional parameter visibility
-- Group parameters for better UX
-
-**Key Components**:
-
-- `ParameterProcessor`: Main parameter processing logic
-- `Parameter`: Parameter definition structure
-- `Validation`: Validation rules structure
-
-**Key Functions**:
-
-- `GetVisibleParameters()`: Return parameters based on conditions
-- `ValidateParameter()`: Validate parameter values
-- `GetParameterGroups()`: Organize parameters by groups
-- `evaluateCondition()`: Evaluate conditional logic
-
-##### Processor (`processor.go`)
-
-**Purpose**: Template processing and file operations
-
-**Responsibilities**:
-
-- Process template files with parameter substitution
-- Handle conditional file inclusion/exclusion
-- Execute post-scaffolding actions
-- Manage file and directory operations
-
-**Key Components**:
-
-- `TemplateProcessor`: Main template processing logic
-- `PostScaffold`: Post-scaffolding actions definition
-
-**Key Functions**:
-
-- `ScaffoldProject()`: Main scaffolding function
-- `ProcessTemplate()`: Template content processing
-- `ProcessFileName()`: Filename template processing
-- `ExecutePostScaffoldActions()`: Execute post-scaffolding actions
-
-## 🔄 Data Flow
-
-### 1. Template Discovery Flow
-
-```
-1. Application Start
-   ↓
-2. DiscoverTemplates() scans embedded filesystem
-   ↓
-3. LoadTemplateManifest() for each template directory
-   ↓
-4. ValidateTemplate() checks structure and parameters
-   ↓
-5. Return TemplateInfo array
+```yaml
+apiVersion: v1
+kind: Workbench
+metadata:
+  name: project-name
+environments:
+  dev:
+    provider: aws
+    region: us-west-2
+services:
+  frontend:
+    template: nextjs-full-stack
+    path: frontend
+    port: 3000
+  backend:
+    template: fastapi-basic
+    path: backend
+    port: 8000
+components:
+  gateway:
+    template: nginx-gateway
+    path: gateway
+    ports: ["80", "443"]
 ```
 
-### 2. User Interaction Flow
-
-```
-1. User selects execution mode (TUI/Interactive)
-   ↓
-2. Template selection (TUI: visual, Interactive: default)
-   ↓
-3. Load template manifest
-   ↓
-4. Collect parameters with validation
-   ↓
-5. Process template with parameters
-   ↓
-6. Execute post-scaffolding actions
-   ↓
-7. Report success/failure
-```
-
-### 3. Template Processing Flow
-
-```
-1. TemplateProcessor created with manifest and values
-   ↓
-2. Walk template directory structure
-   ↓
-3. Process each file:
-   - Process filename template
-   - Process file content template
-   - Write to destination
-   ↓
-4. Execute post-scaffolding actions:
-   - Conditional file deletion
-   - Command execution
-```
-
-## 📁 File Structure
-
-### Embedded Filesystem
-
-```
-templates/
-├── nextjs-full-stack/
-│   ├── template.json          # Template manifest
-│   ├── package.json           # Template file
-│   ├── src/
-│   │   └── app/
-│   │       └── page.tsx       # Template file
-│   └── Dockerfile             # Template file
-├── fastapi-basic/
-│   ├── template.json          # Template manifest
-│   ├── main.py               # Template file
-│   └── requirements.txt       # Template file
-└── [other templates...]
-```
-
-### Template Manifest Structure
-
-```json
-{
-  "name": "Template Name",
-  "description": "Template description",
-  "parameters": [
-    {
-      "name": "ParameterName",
-      "prompt": "User prompt",
-      "group": "Group Name",
-      "type": "string|boolean|select|multiselect",
-      "required": true,
-      "default": "default value",
-      "options": ["option1", "option2"],
-      "condition": "OtherParam == true",
-      "validation": {
-        "regex": "^[a-z0-9-]+$",
-        "errorMessage": "Custom error message"
-      }
-    }
-  ],
-  "postScaffold": {
-    "filesToDelete": [
-      {
-        "path": "file-to-delete.js",
-        "condition": "IncludeFeature == false"
-      }
-    ],
-    "commands": [
-      {
-        "command": "npm install",
-        "description": "Installing dependencies...",
-        "condition": "InstallDeps == true"
-      }
-    ]
-  }
-}
-```
-
-## 🔧 Technical Decisions
-
-### 1. Embedded Filesystem
-
-**Decision**: Use Go's `embed` directive for template storage
-
-**Rationale**:
+#### Key Features
 
-- Single binary distribution
-- No external file dependencies
-- Version control for templates
-- Cross-platform compatibility
+- **Service Management**: Track all services in the project
+- **Component Support**: Shared infrastructure components
+- **Environment Configuration**: Multi-environment deployment support
+- **Resource Tracking**: Service-specific resources (databases, etc.)
 
-**Implementation**:
+### Generator System (`internal/generator/`)
 
-```go
-//go:embed templates
-var templatesFS embed.FS
-```
+The generator system creates deployment configurations from the manifest.
 
-### 2. JSON-Based Template Manifests
+#### Docker Generator (`generator/docker/`)
+- Generates `docker-compose.yml` files
+- Handles service networking
+- Manages environment variables
+- Supports volume mounts
 
-**Decision**: Use JSON for template configuration
+#### Terraform Generator (`generator/terraform/`)
+- Generates Terraform configurations
+- Supports multiple cloud providers
+- Handles environment-specific configurations
+- Manages infrastructure as code
 
-**Rationale**:
+### Security Layer (`cmd/security.go`)
 
-- Human-readable format
-- Easy to edit and version control
-- No compilation required
-- Flexible structure for future extensions
+The security layer provides input validation and sanitization.
 
-### 3. Conditional Logic System
+#### Key Features
 
-**Decision**: Simple string-based condition evaluation
+- **Directory Safety**: Prevents overwriting existing projects
+- **Parameter Validation**: Validates user inputs against schemas
+- **Path Sanitization**: Prevents path traversal attacks
+- **Template Validation**: Ensures template integrity
 
-**Rationale**:
+## Command Reference
 
-- Lightweight implementation
-- Easy to understand and debug
-- Sufficient for current use cases
-- Extensible for future enhancements
+### `om init`
 
-**Implementation**:
+Initialize a new Open Workbench project.
 
-```go
-// Simple equality conditions
-"IncludeTesting == true"
-"TestingFramework != 'Jest'"
-```
+**Flags:**
+- None (interactive mode only)
 
-### 4. Template Processing Strategy
+**Process:**
+1. Validates current directory is empty or contains only hidden files
+2. Prompts for project name and first service
+3. Creates project structure
+4. Generates initial `workbench.yaml`
 
-**Decision**: Process both filenames and content
+### `om add service`
 
-**Rationale**:
+Add a new service to the project.
 
-- Dynamic file structure based on parameters
-- Flexible template system
-- Support for conditional file inclusion
-- Maintains template simplicity
+**Flags:**
+- `--name`: Service name (optional)
+- `--template`: Template name (optional)
+- `--params`: Key-value parameters (optional)
 
-### 5. Post-Scaffolding Actions
+**Modes:**
+- **Interactive**: No flags provided, prompts for all details
+- **Direct**: Flags provided, minimal prompting
 
-**Decision**: JSON-defined post-processing actions
+### `om add component`
 
-**Rationale**:
+Add a shared component to the project.
 
-- Declarative configuration
-- Template-specific customization
-- Conditional execution
-- Extensible action types
+**Flags:**
+- `--name`: Component name (optional)
+- `--template`: Template name (optional)
+- `--params`: Key-value parameters (optional)
 
-## 🛡️ Error Handling
+### `om compose`
 
-### Error Categories
+Generate deployment configuration.
 
-1. **User Input Errors**
+**Flags:**
+- `--target`: Deployment target (docker, terraform)
+- `--env`: Environment name (required for terraform)
 
-   - Invalid parameter values
-   - Missing required parameters
-   - Validation failures
+### `om ls`
 
-2. **Template Errors**
+List project services and components.
 
-   - Invalid template manifests
-   - Missing template files
-   - Template processing errors
+**Flags:**
+- None
 
-3. **System Errors**
-   - File system errors
-   - Permission issues
-   - Network errors (for future features)
+### `om delete`
 
-### Error Handling Strategy
+Remove services or components.
 
-1. **Graceful Degradation**
+**Flags:**
+- `--name`: Name of service/component to delete
+- `--type`: Type (service or component)
 
-   - Continue processing when possible
-   - Provide clear error messages
-   - Allow user recovery
+## Security Architecture
 
-2. **Validation First**
+### Input Validation
 
-   - Validate templates before processing
-   - Validate parameters before use
-   - Early error detection
+The system implements multiple layers of input validation:
 
-3. **User-Friendly Messages**
-   - Clear, actionable error messages
-   - Context-specific guidance
-   - Debug information when appropriate
+1. **Parameter Validation**: Each parameter has validation rules (regex, required, etc.)
+2. **Directory Safety**: Prevents overwriting existing projects
+3. **Path Sanitization**: Prevents path traversal attacks
+4. **Template Validation**: Ensures template integrity
 
-## 🔮 Future Architecture Considerations
+### Safety Checks
 
-### 1. Plugin System
+- **Directory Safety**: Validates target directories are safe for initialization
+- **Service Uniqueness**: Ensures service names are unique within projects
+- **Template Existence**: Validates templates exist before processing
+- **Parameter Completeness**: Ensures all required parameters are provided
 
-**Planned**: Extensible plugin architecture
+## Data Flow
 
-**Design**:
+### Project Initialization Flow
 
-- Plugin interface for custom actions
-- Plugin discovery and loading
-- Plugin configuration management
-- Plugin versioning and updates
+1. **User runs `om init`**
+2. **Directory Safety Check**: Validates current directory
+3. **Project Name Collection**: Prompts for project name
+4. **First Service Setup**: Prompts for service details
+5. **Directory Creation**: Creates project structure
+6. **Service Scaffolding**: Processes template with parameters
+7. **Manifest Creation**: Generates `workbench.yaml`
+8. **Success Feedback**: Reports completion
 
-### 2. Template Marketplace
+### Service Addition Flow
 
-**Planned**: External template distribution
+1. **User runs `om add service`**
+2. **Manifest Loading**: Loads existing `workbench.yaml`
+3. **Service Details Collection**: Interactive or direct parameter collection
+4. **Safety Validation**: Checks service name uniqueness
+5. **Template Processing**: Scaffolds service using template
+6. **Manifest Update**: Updates `workbench.yaml`
+7. **Success Feedback**: Reports completion
 
-**Design**:
+### Template Processing Flow
 
-- Template registry system
-- Template versioning
-- Template validation and testing
-- Community template submission
+1. **Template Discovery**: Loads template from embedded filesystem
+2. **Parameter Collection**: Gathers parameters interactively or from flags
+3. **Parameter Validation**: Validates against template requirements
+4. **File Processing**: Processes each file in template
+5. **Conditional Logic**: Applies conditional file deletions
+6. **Post-Actions**: Executes post-scaffolding commands
+7. **Progress Reporting**: Provides user feedback throughout
 
-### 3. Advanced Condition Engine
+## Design Patterns
 
-**Planned**: More sophisticated conditional logic
+### Command Pattern
+Each CLI command is implemented as a separate Cobra command with clear separation of concerns.
 
-**Design**:
+### Template Method Pattern
+The templating engine uses a template method pattern for processing templates with customizable steps.
 
-- Expression parser for complex conditions
-- Support for mathematical operations
-- String manipulation functions
-- Boolean logic operators
+### Strategy Pattern
+The generator system uses strategy pattern for different deployment targets (Docker, Terraform).
 
-### 4. Template Caching
+### Factory Pattern
+The template processor uses factory pattern for creating different parameter types.
 
-**Planned**: Performance optimization
+## Error Handling
 
-**Design**:
+The system implements comprehensive error handling:
 
-- Template manifest caching
-- Compiled template caching
-- Incremental template updates
-- Cache invalidation strategies
+1. **Graceful Degradation**: Continues processing when possible
+2. **User-Friendly Messages**: Clear error messages for users
+3. **Validation Errors**: Specific validation error messages
+4. **Recovery Mechanisms**: Automatic cleanup on failures
 
-## 📊 Performance Considerations
+## Performance Considerations
 
-### Current Optimizations
+1. **Embedded Templates**: Templates are embedded in binary for fast access
+2. **Lazy Loading**: Templates are loaded only when needed
+3. **Minimal I/O**: Efficient file operations
+4. **Memory Management**: Proper cleanup of resources
 
-1. **Embedded Filesystem**
+## Extension Points
 
-   - No disk I/O for template loading
-   - Fast template discovery
-   - Memory-efficient storage
+The system is designed for extensibility:
 
-2. **Lazy Loading**
-
-   - Load templates only when needed
-   - Minimal memory footprint
-   - Fast startup time
-
-3. **Efficient Processing**
-   - Stream-based file processing
-   - Minimal memory allocations
-   - Optimized template parsing
-
-### Future Optimizations
-
-1. **Parallel Processing**
-
-   - Concurrent template processing
-   - Parallel file operations
-   - Background validation
-
-2. **Caching Strategies**
-
-   - Template manifest caching
-   - Compiled template caching
-   - Parameter validation caching
-
-3. **Memory Management**
-   - Streaming for large templates
-   - Memory pool for allocations
-   - Garbage collection optimization
-
-## 🔍 Monitoring and Observability
-
-### Current Observability
-
-1. **Debug Logging**
-
-   - Template discovery logs
-   - Parameter processing logs
-   - File operation logs
-
-2. **Error Reporting**
-   - Detailed error messages
-   - Stack traces for debugging
-   - Context information
-
-### Planned Observability
-
-1. **Metrics Collection**
-
-   - Template usage statistics
-   - Performance metrics
-   - Error rate tracking
-
-2. **Telemetry**
-
-   - Usage analytics (opt-in)
-   - Performance monitoring
-   - Error reporting
-
-3. **Health Checks**
-   - Template validation status
-   - System resource usage
-   - Dependency health
-
----
-
-**Last Updated**: 07/29/2025  
-**Version**: v0.5.0  
-**Maintainers**: [Project Maintainers]
+1. **Template System**: Easy to add new templates
+2. **Generator System**: Easy to add new deployment targets
+3. **Parameter Types**: Easy to add new parameter types
+4. **Command System**: Easy to add new commands 

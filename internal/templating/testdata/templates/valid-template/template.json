@@ -1,0 +1,38 @@
+{
+  "name": "valid-template",
+  "description": "A valid test template",
+  "parameters": [
+    {
+      "name": "project_name",
+      "prompt": "What is your project name?",
+      "type": "string",
+      "required": true,
+      "validation": {
+        "regex": "^[a-z0-9-]+$",
+        "errorMessage": "Project name must contain only lowercase letters, numbers, and hyphens"
+      }
+    },
+    {
+      "name": "framework",
+      "prompt": "Which framework would you like to use?",
+      "type": "select",
+      "required": true,
+      "options": ["react", "vue", "angular"]
+    },
+    {
+      "name": "features",
+      "prompt": "Which features would you like to include?",
+      "type": "multiselect",
+      "required": false,
+      "options": ["authentication", "database", "api", "testing"]
+    }
+  ],
+  "postScaffold": {
+    "commands": [
+      {
+        "command": "npm install",
+        "description": "Install dependencies"
+      }
+    ]
+  }
+}

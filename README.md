@@ -1,383 +1,123 @@
 ﻿# Open Workbench Platform
 
-![Status: Work in Progress](https://img.shields.io/badge/status-work%20in%20progress-yellow)
 ![Go](https://img.shields.io/badge/Go-1.24%2B-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 
-🚀 A powerful command-line tool for scaffolding modern web applications with pre-configured templates and best practices.
+**Open Workbench Platform** is your all-in-one CLI for rapidly bootstrapping, developing, and managing modern, production-ready applications—locally and in the cloud.
 
-<!-- TODO: Add demo GIF or asciinema recording here -->
+### Why Open Workbench?
 
-## What is Open Workbench Platform?
+- **Tired of spending days wiring up boilerplate, Docker, and cloud configs for every new project?**
+- **Frustrated by the complexity of multi-service (monorepo, microservices, full-stack) setups?**
+- **Want to go from idea to running code in minutes, not weeks?**
 
-Open Workbench Platform is a Go-based command-line interface that helps developers quickly bootstrap new projects using carefully crafted templates. It eliminates the repetitive setup process and ensures you start with a solid foundation following industry best practices.
+Open Workbench solves the "blank canvas" problem by automating the tedious setup for multi-service applications. It lets you focus on writing code, not wiring up infrastructure.
 
-### Key Features
+### Who is it for?
 
-- **🎯 Dynamic Template System**: Advanced templating with conditional logic, parameter validation, and post-scaffolding actions
-- **🖥️ Terminal User Interface (TUI)**: Beautiful interactive interface for template selection and configuration
-- **📋 Parameter Groups**: Organized parameter collection with grouping and conditional visibility
-- **✅ Validation & Error Handling**: Comprehensive input validation with custom regex patterns and error messages
-- **🔧 Post-Scaffolding Actions**: Automatic file cleanup, dependency installation, and git initialization
-- **🌐 Cross-Platform**: Works on Windows, macOS, and Linux
-- **📦 Multiple Installation Methods**: Homebrew, Scoop, GitHub Releases, and source builds
+- **Developers & teams** who want to quickly scaffold, run, and iterate on real-world apps
+- **Startups & hackathons** needing to move fast with best practices baked in
+- **Anyone** who wants a smooth path from local dev to cloud deployment
 
-## Quick Start
+### What makes it unique?
+
+- **One command to bootstrap**: Instantly create a new project with batteries-included templates (Node, Python, React, Vue, etc.)
+- **Multi-service made easy**: Add APIs, frontends, databases, gateways, and more—no manual Docker or YAML
+- **Local & cloud ready**: Generate Docker Compose for local dev, or Terraform for cloud infra, from the same config
+- **Consistent, repeatable environments**: Share, version, and reproduce your entire stack with a single YAML file
+
+**In short:** Open Workbench is the fastest way to go from zero to a running, production-grade app—locally or in the cloud.
+
+
+## 🚀 Quick Start
 
 ### Installation
 
-#### From GitHub Releases
+**macOS / Linux (Homebrew):**
 
 ```bash
-# Download from https://github.com/jashkahar/open-workbench-platform/releases
-# Extract and add to PATH
+brew install jashkahar/tap/open-workbench-platform
 ```
 
-#### Package Managers (Recommended)
+**Windows (Scoop):**
 
 ```bash
-# Homebrew (macOS)
-brew install jashkahar/tap/om
-
-# Scoop (Windows)
-scoop bucket add jashkahar https://github.com/jashkahar/scoop-bucket
-scoop install om
+scoop bucket add jashkahar https://github.com/jashkahar/scoop-bucket.git
+scoop install open-workbench-platform
 ```
 
 ### Usage
 
-```bash
-# Interactive mode (recommended)
-om
+1. **Initialize a new project:**
 
-# CLI mode with flags
-om create <template> <project-name> --owner="Your Name" [flags]
+   ```bash
+   om init
+   ```
 
+   This creates a `workbench.yaml` file to define your project structure.
 
-```
+2. **Add a backend service:**
 
-### CLI Mode Examples
+   ```bash
+   om add service
+   ```
 
-```bash
-# Create a Next.js project with all features
-om create nextjs-full-stack my-app --owner="John Doe"
+   This adds services to your project. Available templates include:
 
-# Create a React project without testing
-om create react-typescript my-react-app --owner="Dev Team" --no-testing
+   - `express-api`: Node.js Express API
+   - `fastapi-basic`: Python FastAPI
+   - `nextjs-full-stack`: Next.js full-stack app
+   - `react-typescript`: React with TypeScript
+   - `vue-nuxt`: Vue.js with Nuxt
+   - `nginx-gateway`: Nginx reverse proxy
+   - `redis-cache`: Redis cache service
 
-# Create a FastAPI project without git initialization
-om create fastapi-basic my-api --owner="Backend Team" --no-git
+3. **Generate your local environment:**
 
-# Get help for CLI mode
-om create --help
-```
+   ```bash
+   om compose
+   ```
 
-## Available Templates
+   This generates the `docker-compose.yml` file needed to run your application.
 
-### 🎨 nextjs-full-stack
+   **Available flags:**
 
-A production-ready Next.js application with:
+   - `--target`: Specify deployment target (`docker`)
+   - `--env`: Environment name (`dev`, `staging`, `prod`)
 
-- **TypeScript**: Full TypeScript support with strict configuration
-- **Testing**: Jest or Vitest with comprehensive test setup
-- **Styling**: Tailwind CSS with PostCSS configuration
-- **Docker**: Ready-to-use Dockerfile for containerization
-- **Quality Tools**: ESLint, Prettier, and Husky for code quality
-- **CI/CD Ready**: GitHub Actions workflows included
+   **Examples:**
 
-### ⚡ fastapi-basic
+   ```bash
+   # Interactive mode - prompts for target selection
+   om compose
 
-A FastAPI backend template with:
+   # Generate Docker Compose for local development
+   om compose --target docker
+   ```
 
-- **FastAPI**: Modern, fast web framework for building APIs
-- **Uvicorn**: ASGI server for running the application
-- **Python Best Practices**: Virtual environment setup and dependency management
-- **API Documentation**: Automatic OpenAPI/Swagger documentation
-- **Hot Reload**: Development server with auto-reload capability
+   **Deployment Targets:**
 
-### 🎯 react-typescript
+   - **Docker**: Generates `docker-compose.yml` for local development
+   - **Terraform**: Generates infrastructure code for cloud deployment (AWS, GCP, Azure)
 
-A modern React application with:
+4. **List your services:**
 
-- **Vite**: Lightning-fast build tool and dev server
-- **TypeScript**: Full TypeScript support
-- **Modern Tooling**: ESLint, Prettier configuration
-- **Component Library**: Ready-to-use component structure
+   ```bash
+   om ls
+   ```
 
-### 🚀 express-api
+   Shows all services in your project and their current status.
 
-A Node.js Express API template with:
+5. **Run your application:**
+   ```bash
+   docker-compose -f docker-compose.yml up --build
+   ```
 
-- **Express.js**: Fast, unopinionated web framework
-- **TypeScript**: Full TypeScript support
-- **Testing**: Jest setup with API testing utilities
-- **Documentation**: Swagger/OpenAPI documentation
+## 📚 Learn More
 
-### 🟢 vue-nuxt
+For a full command reference and details on the architecture, please see our **[Full Documentation](docs/README.md)**.
 
-A Vue.js Nuxt application with:
+## 🤝 Contributing
 
-- **Nuxt 3**: Full-stack Vue.js framework
-- **TypeScript**: Full TypeScript support
-- **Auto-imports**: Automatic component and composable imports
-- **SSR Ready**: Server-side rendering configuration
-
-## Dynamic Template System
-
-The CLI uses an advanced dynamic templating system that supports:
-
-### Parameter Types
-
-- **String**: Text input with validation
-- **Boolean**: Yes/No questions with defaults
-- **Select**: Single-choice dropdown
-- **Multiselect**: Multiple-choice selection
-
-### Conditional Logic
-
-Parameters can be conditionally shown based on other parameter values:
-
-```json
-{
-  "name": "TestingFramework",
-  "condition": "IncludeTesting == true",
-  "type": "select",
-  "options": ["Jest", "Vitest"]
-}
-```
-
-### Validation
-
-Custom validation with regex patterns and error messages:
-
-```json
-{
-  "name": "ProjectName",
-  "validation": {
-    "regex": "^[a-z0-9-]+$",
-    "errorMessage": "Project name can only contain lowercase letters, numbers, and hyphens."
-  }
-}
-```
-
-### Post-Scaffolding Actions
-
-Automatic cleanup and setup after project creation:
-
-- **File Deletion**: Remove files based on conditions
-- **Command Execution**: Run setup commands like `npm install` or `git init`
-
-## Project Structure
-
-```
-om/
-├── main.go                   # Main CLI application entry point
-├── tui.go                    # Terminal User Interface implementation
-├── types.go                  # Shared type definitions
-├── internal/
-│   ├── templating/           # Dynamic templating system
-│   │   ├── discovery.go      # Template discovery and validation
-│   │   ├── parameters.go     # Parameter processing and validation
-│   │   └── processor.go      # Template processing and file operations
-│   └── template/             # Legacy template system (deprecated)
-├── templates/                # Template directory
-│   ├── nextjs-full-stack/    # Next.js full-stack template
-│   ├── fastapi-basic/        # FastAPI backend template
-│   ├── react-typescript/     # React + TypeScript template
-│   ├── express-api/          # Express.js API template
-│   └── vue-nuxt/            # Vue.js Nuxt template
-├── docs/                     # Documentation
-│   ├── README.md            # Documentation overview and index
-│   ├── user-guide.md        # Complete user guide
-│   ├── architecture.md      # System architecture
-│   ├── template-system.md   # Template system guide
-│   ├── development.md       # Development guide
-│   ├── DOCUMENTATION_UPDATES.md # Documentation updates summary
-│   └── VERSION_UPDATE_SUMMARY.md # Version update summary
-├── CONTRIBUTING.md           # Contribution guidelines
-├── LICENSE                   # MIT License
-└── .goreleaser.yml          # Release automation
-```
-
-## Development
-
-### Prerequisites
-
-- Go 1.21 or later
-- Git
-
-### Building from Source
-
-```bash
-git clone https://github.com/jashkahar/open-workbench-platform.git
-cd open-workbench-platform
-go mod tidy
-go build -o om main.go
-```
-
-### Running in Development
-
-```bash
-# Run with TUI
-go run main.go ui
-
-# Run simple interactive mode
-go run main.go
-```
-
-### Adding New Templates
-
-1. Create a new directory in `templates/` with your template name
-2. Add a `template.json` file with parameter definitions
-3. Include your template files with Go template syntax where needed
-4. Test the template using the CLI
-
-### Template Manifest Structure
-
-```json
-{
-  "name": "Template Name",
-  "description": "Template description",
-  "parameters": [
-    {
-      "name": "ParameterName",
-      "prompt": "User prompt",
-      "group": "Group Name",
-      "type": "string|boolean|select|multiselect",
-      "required": true,
-      "default": "default value",
-      "options": ["option1", "option2"],
-      "condition": "OtherParam == true",
-      "validation": {
-        "regex": "^[a-z0-9-]+$",
-        "errorMessage": "Custom error message"
-      }
-    }
-  ],
-  "postScaffold": {
-    "filesToDelete": [
-      {
-        "path": "file-to-delete.js",
-        "condition": "IncludeFeature == false"
-      }
-    ],
-    "commands": [
-      {
-        "command": "npm install",
-        "description": "Installing dependencies...",
-        "condition": "InstallDeps == true"
-      }
-    ]
-  }
-}
-```
-
-## Architecture
-
-### Core Components
-
-1. **Main Application (`main.go`)**
-
-   - Command-line argument parsing
-   - Entry point for different modes (TUI, interactive, non-interactive)
-   - Orchestrates the scaffolding process
-
-2. **Terminal User Interface (`tui.go`)**
-
-   - Beautiful interactive template selection
-   - Uses Bubble Tea for TUI framework
-   - Integrates with template discovery system
-
-3. **Dynamic Templating System (`internal/templating/`)**
-
-   - **Discovery**: Template discovery and validation
-   - **Parameters**: Parameter collection, validation, and processing
-   - **Processor**: Template processing and file operations
-
-4. **Template System**
-   - JSON-based template manifests
-   - Conditional logic and validation
-   - Post-scaffolding actions
-
-### Data Flow
-
-1. **Template Discovery**: CLI discovers available templates from embedded filesystem
-2. **Template Selection**: User selects template via TUI or command line
-3. **Parameter Collection**: Dynamic parameter collection with validation
-4. **Template Processing**: Files are processed with parameter substitution
-5. **Post-Scaffolding**: Conditional file deletion and command execution
-
-## Release Automation
-
-This project uses [GoReleaser](https://goreleaser.com/) for automated releases:
-
-- **Multi-platform builds**: Windows, macOS, and Linux (AMD64 and ARM64)
-- **Package managers**: Homebrew and Scoop support
-- **GitHub Releases**: Automatic release creation with changelog
-- **Checksums**: SHA256 checksums for all binaries
-
-### Release Process
-
-1. Create and push a new tag: `git tag v0.5.0 && git push origin v0.5.0`
-2. GitHub Actions automatically builds and releases
-3. Binaries are available on GitHub Releases
-4. Homebrew and Scoop packages are updated automatically
-
-## Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
-
-### Development Guidelines
-
-- Follow Go best practices and conventions
-- Add tests for new features
-- Update documentation for any changes
-- Use conventional commit messages
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-If you encounter any issues or have questions:
-
-1. Check the [Issues](https://github.com/jashkahar/open-workbench-platform/issues) page
-2. Create a new issue with detailed information
-3. Join our community discussions
-
-## Roadmap
-
-### Completed ✅
-
-- [x] Dynamic template system with conditional logic
-- [x] Terminal User Interface (TUI)
-- [x] Parameter validation and grouping
-- [x] Post-scaffolding actions
-- [x] Multiple template types (Next.js, FastAPI, React, Express, Vue)
-- [x] Homebrew and Scoop installation support
-- [x] Release automation with GoReleaser
-- [x] Non-interactive CLI mode with command-line flags
-- [x] Optional git initialization
-- [x] Comprehensive error handling with help guidance
-- [x] Template selection in interactive mode
-
-### In Progress 🚧
-
-- [ ] Template preview functionality
-- [ ] Plugin system for custom templates
-
-### Planned 📋
-
-- [ ] CI/CD integration templates
-- [ ] Cloud deployment templates
-- [ ] Template validation and testing framework
-- [ ] Template marketplace
-- [ ] IDE integration plugins
-- [ ] Template versioning and updates
-
----
-
-**Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to this project.
-
+We welcome contributions! Please check out our **[Contributing Guide](CONTRIBUTING.md)**.

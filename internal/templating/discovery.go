@@ -19,6 +19,7 @@ import (
 type TemplateManifest struct {
 	Name         string        `json:"name"`                   // Display name for the template
 	Description  string        `json:"description"`            // Human-readable description
+	Type         string        `json:"type,omitempty"`         // Template type (service, component, etc.)
 	Parameters   []Parameter   `json:"parameters"`             // List of parameters to collect
 	PostScaffold *PostScaffold `json:"postScaffold,omitempty"` // Post-processing actions
 }

@@ -1,6 +1,7 @@
 {
   "name": "React TypeScript",
   "description": "A modern React application with TypeScript, Vite, and best practices.",
+  "type": "service",
   "parameters": [
     {
       "name": "ProjectName",

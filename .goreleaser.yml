@@ -3,7 +3,7 @@
 # It defines how to build, package, and release your project.
 
 # The project name
-project_name: om
+project_name: open-workbench-platform
 
 # This will be executed before the build
 before:
@@ -14,11 +14,11 @@ before:
 builds:
   - # A list of builds. Each item is a build.
     # The ID of the build. Used in the archives and other configurations.
-    id: om
+    id: open-workbench-platform
     # The path to the main package.
     main: .
     # The go binary to use.
-    binary: om
+    binary: open-workbench-platform.exe
     # GOOS and GOARCH to build for.
     goos:
       - linux
@@ -34,7 +34,7 @@ builds:
 # Archive configuration
 archives:
   - # ID of the archive.
-    id: om
+    id: open-workbench-platform
     # The format of the archive.
     format: tar.gz
     # The name template of the archive.
@@ -63,7 +63,7 @@ changelog:
 # Homebrew tap configuration
 brews:
   - # Name of the recipe
-    name: om
+    name: open-workbench-platform
     # The GitHub repository to push the formula to
     repository:
       owner: jashkahar
@@ -84,7 +84,7 @@ brews:
     license: "MIT"
     # A list of test commands to run.
     test: |
-      system "#{bin}/om --version"
+      system "#{bin}/open-workbench-platform --version"
 
 # Scoop bucket configuration
 scoops:
