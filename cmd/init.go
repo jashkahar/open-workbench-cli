@@ -567,8 +567,6 @@ func printSuccessMessage(projectName, serviceName string) {
 	fmt.Println("🚀 Next steps:")
 	fmt.Printf("  cd %s\n", projectName)
 	fmt.Println("  om add service  # Add more services to your project")
-	// fmt.Println("  om run          # Run your project (when implemented)")
-	// fmt.Println("  om deploy       # Deploy your project (when implemented)")
 }
 
 // isValidProjectName validates that a project/service name follows the required format
