@@ -43,10 +43,12 @@
       "helpText": "Add SSL/TLS configuration for HTTPS support"
     }
   ],
-  "postScaffoldActions": [
-    {
-      "type": "shell",
-      "command": "echo 'Nginx gateway component created successfully'"
-    }
-  ]
+  "postScaffold": {
+    "commands": [
+      {
+        "command": "echo 'Nginx gateway component created successfully'",
+        "description": "Nginx gateway component created successfully"
+      }
+    ]
+  }
 } 

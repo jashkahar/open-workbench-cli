@@ -42,12 +42,20 @@ The command layer is built using the Cobra framework and provides the following 
 - **Process**: Similar to add service but for components
 - **Key Files**: `cmd/add_service.go` (shared logic)
 
+#### `om add resource`
+- **Purpose**: Add an infrastructure resource (database, cache, storage, MQ) to a service
+- **Process**:
+  1. Loads existing `workbench.yaml`
+  2. Collects resource type and parameters (interactive/direct)
+  3. Updates manifest file under the selected service
+- **Key Files**: `cmd/add_resource.go`, `internal/resources` (blueprints)
+
 #### `om compose`
 - **Purpose**: Generate deployment configurations
-- **Targets**: Docker Compose, Terraform
+- **Targets**: Docker Compose (Terraform prototype is currently disabled)
 - **Process**:
   1. Loads `workbench.yaml`
-  2. Selects target (docker/terraform)
+  2. Selects target (docker)
   3. Generates configuration files
 - **Key Files**: `cmd/compose.go`
 
@@ -98,28 +106,24 @@ The manifest system manages project configuration through `workbench.yaml` files
 #### WorkbenchManifest Structure
 
 ```yaml
-apiVersion: v1
-kind: Workbench
+apiVersion: openworkbench.io/v1alpha1
+kind: Project
 metadata:
   name: project-name
-environments:
-  dev:
-    provider: aws
-    region: us-west-2
 services:
   frontend:
     template: nextjs-full-stack
-    path: frontend
+    path: ./frontend
     port: 3000
   backend:
     template: fastapi-basic
-    path: backend
+    path: ./backend
     port: 8000
 components:
   gateway:
     template: nginx-gateway
-    path: gateway
-    ports: ["80", "443"]
+    path: ./gateway
+    ports: ["8080:80"]
 ```
 
 #### Key Features
@@ -198,8 +202,8 @@ Add a shared component to the project.
 Generate deployment configuration.
 
 **Flags:**
-- `--target`: Deployment target (docker, terraform)
-- `--env`: Environment name (required for terraform)
+- `--target`: Deployment target (docker)
+- `--env`: Environment name (reserved for Terraform)
 
 ### `om ls`
 

@@ -60,6 +60,8 @@ Features:
 	// Initialize delete command
 	initDeleteCommand()
 
+	// Removed validate command
+
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)

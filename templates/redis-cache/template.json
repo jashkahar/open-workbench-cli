@@ -43,10 +43,12 @@
       "helpText": "Password for Redis authentication (leave empty for no password)"
     }
   ],
-  "postScaffoldActions": [
-    {
-      "type": "shell",
-      "command": "echo 'Redis cache component created successfully'"
-    }
-  ]
+  "postScaffold": {
+    "commands": [
+      {
+        "command": "echo 'Redis cache component created successfully'",
+        "description": "Redis cache component created successfully"
+      }
+    ]
+  }
 } 

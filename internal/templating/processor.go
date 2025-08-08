@@ -120,8 +120,19 @@ func (tp *TemplateProcessor) getTemplateFunctions() template.FuncMap {
 		// String manipulation functions
 		"lower": strings.ToLower,
 		"upper": strings.ToUpper,
-		"title": strings.Title,
-		"trim":  strings.TrimSpace,
+		// Replace deprecated strings.Title with a safe title-casing util
+		"title": func(s string) string {
+			if len(s) == 0 {
+				return s
+			}
+			first := strings.ToUpper(s[:1])
+			rest := ""
+			if len(s) > 1 {
+				rest = strings.ToLower(s[1:])
+			}
+			return first + rest
+		},
+		"trim": strings.TrimSpace,
 	}
 }
 

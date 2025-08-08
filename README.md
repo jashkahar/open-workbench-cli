@@ -29,7 +29,6 @@ Open Workbench solves the "blank canvas" problem by automating the tedious setup
 
 **In short:** Open Workbench is the fastest way to go from zero to a running, production-grade app—locally or in the cloud.
 
-
 ## 🚀 Quick Start
 
 ### Installation
@@ -73,7 +72,17 @@ scoop install open-workbench-platform
    - `nginx-gateway`: Nginx reverse proxy
    - `redis-cache`: Redis cache service
 
-3. **Generate your local environment:**
+3. **Add an infrastructure resource to a service (e.g., Postgres):**
+
+   ```bash
+   # Interactive
+   om add resource
+
+   # Direct
+   om add resource --service backend --type postgres-db --name database
+   ```
+
+4. **Generate your local environment:**
 
    ```bash
    om compose
@@ -89,19 +98,18 @@ scoop install open-workbench-platform
    **Examples:**
 
    ```bash
-   # Interactive mode - prompts for target selection
+   # Interactive (prompts for target)
    om compose
 
-   # Generate Docker Compose for local development
+   # Direct: generate Docker Compose for local development
    om compose --target docker
    ```
 
-   **Deployment Targets:**
+   **Deployment targets:**
 
-   - **Docker**: Generates `docker-compose.yml` for local development
-   - **Terraform**: Generates infrastructure code for cloud deployment (AWS, GCP, Azure)
+   - Docker: Generates `docker-compose.yml` for local development.
 
-4. **List your services:**
+5. **List your services:**
 
    ```bash
    om ls
@@ -109,10 +117,14 @@ scoop install open-workbench-platform
 
    Shows all services in your project and their current status.
 
-5. **Run your application:**
+6. **Run your application:**
    ```bash
-   docker-compose -f docker-compose.yml up --build
+   docker compose -f docker-compose.yml up --build
    ```
+
+### Additional commands
+
+- `om list-templates`: List available templates and their parameters.
 
 ## 📚 Learn More
 

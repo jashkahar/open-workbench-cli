@@ -1,11 +1,14 @@
 package compose
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
+	"text/template"
 
+	"github.com/jashkahar/open-workbench-platform/internal/resources"
 	"gopkg.in/yaml.v3"
 )
 
@@ -106,16 +109,29 @@ func (g *Generator) createService(name string, service Service) DockerComposeSer
 
 // createResourceService creates a Docker Compose service for a resource (like a database)
 func (g *Generator) createResourceService(serviceName, resourceName string, resource Resource) DockerComposeService {
+	// Start with base defaults
 	dockerService := DockerComposeService{
-		Image:    fmt.Sprintf("%s:%s", resource.Type, resource.Version),
 		EnvFile:  []string{"./.env"},
 		Networks: []string{"workbench_net"},
 	}
 
-	// Add volume for data persistence
-	volumeName := fmt.Sprintf("%s_%s_data", serviceName, resourceName)
-	dockerService.Volumes = []string{fmt.Sprintf("%s:/var/lib/%s/data", volumeName, resource.Type)}
+	// Try to apply a resource blueprint if available
+	if applied := g.applyBlueprintIfAvailable(resource, &dockerService); applied {
+		// Ensure we have at least a volume if none was provided by blueprint for known types
+		g.ensureDefaultVolumeForKnownTypes(serviceName, resourceName, resource, &dockerService)
+		return dockerService
+	}
 
+	// Fallback: map known types to canonical images and volumes
+	baseImage := resolveBaseImage(resource.Type)
+	version := strings.TrimSpace(resource.Version)
+	if version == "" {
+		version = "latest"
+	}
+	dockerService.Image = fmt.Sprintf("%s:%s", baseImage, version)
+
+	// Volume defaults for known types
+	g.ensureDefaultVolumeForKnownTypes(serviceName, resourceName, resource, &dockerService)
 	return dockerService
 }
 
@@ -175,6 +191,149 @@ func (g *Generator) resolveEnvironmentVariables(config *DockerComposeConfig) {
 
 		service.Environment = resolvedEnv
 		config.Services[serviceName] = service
+	}
+}
+
+// resolveBaseImage maps a resource type to a canonical Docker image base
+func resolveBaseImage(resourceType string) string {
+	switch strings.ToLower(resourceType) {
+	case "postgres", "postgres-db":
+		return "postgres"
+	case "mysql", "mysql-db":
+		return "mysql"
+	case "mongodb", "mongo":
+		return "mongo"
+	case "redis", "redis-cache":
+		return "redis"
+	case "s3", "s3-bucket":
+		return "minio/minio"
+	case "rabbitmq":
+		return "rabbitmq"
+	case "kafka":
+		return "confluentinc/cp-kafka"
+	default:
+		return resourceType
+	}
+}
+
+// normalizeResourceType reduces known blueprint keys/synonyms to a simple canonical type
+func normalizeResourceType(resourceType string) string {
+	switch strings.ToLower(resourceType) {
+	case "postgres", "postgres-db":
+		return "postgres"
+	case "mysql", "mysql-db":
+		return "mysql"
+	case "redis", "redis-cache":
+		return "redis"
+	case "mongodb", "mongo":
+		return "mongodb"
+	default:
+		return strings.ToLower(resourceType)
+	}
+}
+
+// resolveBlueprintKey maps resource type to a registry blueprint key
+func resolveBlueprintKey(resourceType string) string {
+	switch strings.ToLower(resourceType) {
+	case "postgres", "postgres-db":
+		return "postgres-db"
+	case "mysql", "mysql-db":
+		return "mysql-db"
+	case "mongodb", "mongo":
+		return "mongodb"
+	case "redis", "redis-cache":
+		return "redis-cache"
+	case "memcached":
+		return "memcached"
+	case "s3", "s3-bucket":
+		return "s3-bucket"
+	case "rabbitmq":
+		return "rabbitmq"
+	case "kafka":
+		return "kafka"
+	default:
+		return resourceType
+	}
+}
+
+// applyBlueprintIfAvailable tries to render and merge a resource blueprint into dockerService
+func (g *Generator) applyBlueprintIfAvailable(resource Resource, dockerService *DockerComposeService) bool {
+	registry := resources.NewRegistry()
+	key := resolveBlueprintKey(resource.Type)
+	blueprint, err := registry.Get(key)
+	if err != nil || strings.TrimSpace(blueprint.DockerComposeSnippet) == "" {
+		return false
+	}
+
+	// Build template data combining version and config (both original and Title-cased keys)
+	data := map[string]interface{}{}
+	if resource.Version != "" {
+		data["Version"] = resource.Version
+		data["version"] = resource.Version
+	}
+	for k, v := range resource.Config {
+		data[k] = v
+		if len(k) > 0 {
+			// Title-case first rune only, keep rest as-is
+			r := []rune(k)
+			r[0] = []rune(strings.ToUpper(string(r[0])))[0]
+			data[string(r)] = v
+		}
+	}
+
+	// Render snippet
+	rendered, err := template.New("snippet").Parse(blueprint.DockerComposeSnippet)
+	if err != nil {
+		return false
+	}
+	var buf bytes.Buffer
+	if err := rendered.Execute(&buf, data); err != nil {
+		return false
+	}
+
+	// Wrap into a minimal YAML document for unmarshalling
+	snippet := strings.TrimLeft(buf.String(), "\n")
+	wrapped := "service:\n" + snippet
+
+	var tmp struct {
+		Service DockerComposeService `yaml:"service"`
+	}
+	if err := yaml.Unmarshal([]byte(wrapped), &tmp); err != nil {
+		return false
+	}
+
+	// Merge fields conservatively
+	if tmp.Service.Image != "" {
+		dockerService.Image = tmp.Service.Image
+	}
+	if len(tmp.Service.Ports) > 0 {
+		dockerService.Ports = append(dockerService.Ports, tmp.Service.Ports...)
+	}
+	if len(tmp.Service.Volumes) > 0 {
+		dockerService.Volumes = append(dockerService.Volumes, tmp.Service.Volumes...)
+	}
+	if len(tmp.Service.Environment) > 0 {
+		dockerService.Environment = append(dockerService.Environment, tmp.Service.Environment...)
+	}
+
+	return true
+}
+
+// ensureDefaultVolumeForKnownTypes ensures a data volume exists for common stateful services if blueprint didn't specify one
+func (g *Generator) ensureDefaultVolumeForKnownTypes(serviceName, resourceName string, resource Resource, dockerService *DockerComposeService) {
+	if len(dockerService.Volumes) > 0 {
+		return
+	}
+	volumeName := fmt.Sprintf("%s_%s_data", serviceName, resourceName)
+	switch normalizeResourceType(resource.Type) {
+	case "postgres":
+		dockerService.Volumes = []string{fmt.Sprintf("%s:/var/lib/postgresql/data", volumeName)}
+	case "mysql":
+		dockerService.Volumes = []string{fmt.Sprintf("%s:/var/lib/mysql", volumeName)}
+	case "mongodb":
+		dockerService.Volumes = []string{fmt.Sprintf("%s:/data/db", volumeName)}
+	case "redis":
+		dockerService.Volumes = []string{fmt.Sprintf("%s:/data", volumeName)}
 	}
 }
 
@@ -247,7 +406,7 @@ func (g *Generator) GenerateEnvFile() (map[string]string, error) {
 			prefix := fmt.Sprintf("%s_%s", serviceName, resourceName)
 
 			// Generate default credentials based on resource type
-			switch resource.Type {
+			switch normalizeResourceType(resource.Type) {
 			case "postgres":
 				envVars[fmt.Sprintf("%s_user", prefix)] = fmt.Sprintf("%s_user", serviceName)
 				envVars[fmt.Sprintf("%s_password", prefix)] = "password123"
