@@ -638,8 +638,6 @@ func printAddServiceSuccessMessage(serviceName, templateName string) {
 	fmt.Println("🚀 Next steps:")
 	fmt.Printf("  cd %s\n", serviceName)
 	fmt.Println("  om add service  # Add more services to your project")
-	fmt.Println("  om run          # Run your project (when implemented)")
-	fmt.Println("  om deploy       # Deploy your project (when implemented)")
 }
 
 // runAddComponent executes the add component command logic - smart mode detection
