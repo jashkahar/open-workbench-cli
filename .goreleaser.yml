@@ -1,24 +1,20 @@
 # .goreleaser.yml
-# This is the configuration file for GoReleaser.
-# It defines how to build, package, and release your project.
+# This is the corrected configuration file for GoReleaser.
 
-# The project name
-project_name: open-workbench-platform
+# The project name, used for the final binary and archives.
+project_name: om
 
-# This will be executed before the build
 before:
   hooks:
     - go mod tidy
 
-# Build configuration
 builds:
-  - # A list of builds. Each item is a build.
-    # The ID of the build. Used in the archives and other configurations.
-    id: open-workbench-platform
+  - # The ID of the build.
+    id: om
     # The path to the main package.
     main: .
-    # The go binary to use.
-    binary: open-workbench-platform.exe
+    # The final binary name will be 'om' (GoReleaser adds .exe for Windows).
+    binary: om
     # GOOS and GOARCH to build for.
     goos:
       - linux
@@ -29,89 +25,60 @@ builds:
       - arm64
     # Optional ldflags.
     ldflags:
-      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+      - -s -w
 
-# Archive configuration
 archives:
-  - # ID of the archive.
-    id: open-workbench-platform
-    # The format of the archive.
-    format: tar.gz
-    # The name template of the archive.
+  - id: om
+    # This name template will now produce archives like 'om_0.6.0_windows_amd64.tar.gz'
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    # Files to include in the archive.
-    files:
-      - LICENSE
-      - README.md
 
-# Checksum configuration
 checksum:
-  name_template: "checksums.txt"
+  name_template: 'checksums.txt'
 
-# Snapshot configuration
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
 
-# Changelog configuration
 changelog:
   sort: asc
   filters:
     exclude:
-      - "^docs:"
-      - "^test:"
+      - '^docs:'
+      - '^test:'
 
 # Homebrew tap configuration
 brews:
-  - # Name of the recipe
+  - # The name of the formula file will be 'open-workbench-platform.rb'.
     name: open-workbench-platform
-    # The GitHub repository to push the formula to
     repository:
       owner: jashkahar
       name: homebrew-tap
-      # The token to use to push to the repository.
       token: "{{ .Env.GORELEASER_PAT }}"
-    # The commit author
     commit_author:
       name: goreleaserbot
       email: bot@goreleaser.com
-    # The folder inside the repository to push the formula to.
-    folder: Formula
-    # The homepage of the project.
     homepage: "https://github.com/jashkahar/open-workbench-platform"
-    # The description of the project.
     description: "A powerful CLI for scaffolding modern web applications."
-    # The license of the project.
     license: "MIT"
-    # A list of test commands to run.
     test: |
-      system "#{bin}/open-workbench-platform --version"
+      # The test will now correctly call the 'om' command.
+      system "#{bin}/om --version"
 
 # Scoop bucket configuration
 scoops:
-  - # Name of the manifest
-    name: om
-    # The GitHub repository to push the manifest to
+  - # The name of the manifest file will be 'open-workbench-platform.json'.
+    name: open-workbench-platform
     repository:
       owner: jashkahar
       name: scoop-bucket
-      # The token to use to push to the repository.
       token: "{{ .Env.GORELEASER_PAT }}"
-    # The commit author
     commit_author:
       name: goreleaserbot
       email: bot@goreleaser.com
-    # The homepage of the project.
     homepage: "https://github.com/jashkahar/open-workbench-platform"
-    # The description of the project.
     description: "A powerful CLI for scaffolding modern web applications."
-    # The license of the project.
     license: "MIT"
 
-# Release configuration
 release:
-  # The name of the release.
-  name_template: "{{.ProjectName}} v{{.Version}}"
-  # If set to true, will not auto-publish the release.
+  name_template: "v{{.Version}}"
   draft: false
-  # If set to true, will mark the release as a pre-release.
   prerelease: auto
