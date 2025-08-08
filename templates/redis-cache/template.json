@@ -1,0 +1,54 @@
+{
+  "name": "redis-cache",
+  "description": "Redis cache component for session storage and caching",
+  "version": "1.0.0",
+  "type": "component",
+  "parameters": [
+    {
+      "name": "ProjectName",
+      "prompt": "Project Name:",
+      "group": "Project Details",
+      "type": "string",
+      "required": true,
+      "default": "cache",
+      "validation": {
+        "regex": "^[a-z0-9-]+$",
+        "errorMessage": "Project name can only contain lowercase letters, numbers, and hyphens."
+      }
+    },
+    {
+      "name": "Owner",
+      "prompt": "Project Owner:",
+      "group": "Project Details",
+      "type": "string",
+      "required": true,
+      "default": "Open Workbench"
+    },
+    {
+      "name": "Port",
+      "prompt": "Redis Port:",
+      "group": "Configuration",
+      "type": "string",
+      "required": false,
+      "default": "6379",
+      "helpText": "Port number for the Redis server (e.g., 6379)"
+    },
+    {
+      "name": "Password",
+      "prompt": "Redis Password (optional):",
+      "group": "Security",
+      "type": "string",
+      "required": false,
+      "default": "",
+      "helpText": "Password for Redis authentication (leave empty for no password)"
+    }
+  ],
+  "postScaffold": {
+    "commands": [
+      {
+        "command": "echo 'Redis cache component created successfully'",
+        "description": "Redis cache component created successfully"
+      }
+    ]
+  }
+} 

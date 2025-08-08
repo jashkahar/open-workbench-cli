@@ -1,0 +1,54 @@
+{
+  "name": "nginx-gateway",
+  "description": "Nginx reverse proxy gateway for load balancing and routing",
+  "version": "1.0.0",
+  "type": "component",
+  "parameters": [
+    {
+      "name": "ProjectName",
+      "prompt": "Project Name:",
+      "group": "Project Details",
+      "type": "string",
+      "required": true,
+      "default": "gateway",
+      "validation": {
+        "regex": "^[a-z0-9-]+$",
+        "errorMessage": "Project name can only contain lowercase letters, numbers, and hyphens."
+      }
+    },
+    {
+      "name": "Owner",
+      "prompt": "Project Owner:",
+      "group": "Project Details",
+      "type": "string",
+      "required": true,
+      "default": "Open Workbench"
+    },
+    {
+      "name": "Port",
+      "prompt": "Nginx Port:",
+      "group": "Configuration",
+      "type": "string",
+      "required": false,
+      "default": "80",
+      "helpText": "Port number for the nginx gateway (e.g., 80, 8080)"
+    },
+    {
+      "name": "IncludeSSL",
+      "prompt": "Include SSL configuration?",
+      "group": "Configuration",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "helpText": "Add SSL/TLS configuration for HTTPS support"
+    }
+  ],
+  "postScaffold": {
+    "commands": [
+      {
+        "command": "echo 'Nginx gateway component created successfully'",
+        "description": "Nginx gateway component created successfully"
+      }
+    ]
+  }
+} 

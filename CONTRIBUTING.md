@@ -1,359 +1,256 @@
-# Contributing to Open Workbench CLI
+# Contributing to Open Workbench Platform
 
-Thank you for your interest in contributing to Open Workbench CLI! This document provides guidelines and information for contributors.
-
-## Table of Contents
-
-- [Code of Conduct](#code-of-conduct)
-- [How Can I Contribute?](#how-can-i-contribute)
-- [Development Setup](#development-setup)
-- [Project Structure](#project-structure)
-- [Adding New Templates](#adding-new-templates)
-- [Code Style Guidelines](#code-style-guidelines)
-- [Testing](#testing)
-- [Submitting Changes](#submitting-changes)
-- [Release Process](#release-process)
-
-## Code of Conduct
-
-This project and its participants are governed by the [Contributor Covenant Code of Conduct](https://www.contributor-covenant.org/version/2/0/code_of_conduct/). By participating, you are expected to uphold this code.
-
-## How Can I Contribute?
-
-### Ways to Contribute
-
-1. **Add New Templates**: Create templates for popular frameworks and tools
-2. **Improve Existing Templates**: Enhance current templates with better configurations
-3. **Bug Fixes**: Report and fix issues you encounter
-4. **Documentation**: Improve README, add examples, or create tutorials
-5. **Feature Requests**: Suggest new features or improvements
-6. **Code Quality**: Improve error handling, add tests, or refactor code
-7. **UI/UX**: Enhance the Terminal User Interface (TUI)
-
-### Before You Start
-
-- Check existing [Issues](https://github.com/jashkahar/open-workbench-platform/issues) to avoid duplicates
-- For new features, create an issue first to discuss the approach
-- For bug fixes, please include steps to reproduce the issue
+Thank you for your interest in contributing to Open Workbench Platform! This guide will help you get started.
 
 ## Development Setup
 
 ### Prerequisites
 
-- Go 1.24 or later
-- Git
-- A code editor (VS Code, GoLand, etc.)
+- **Go 1.24 or later**
+- **Git**
+- **Docker** (for testing deployment generation)
 
-### Local Development
+### Local Development Environment
 
-1. **Fork the repository** on GitHub
-
-2. **Clone your fork locally**:
+1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/open-workbench-platform.git
+   git clone https://github.com/jashkahar/open-workbench-platform.git
    cd open-workbench-platform
    ```
 
-3. **Add the upstream remote**:
-
-   ```bash
-   git remote add upstream https://github.com/jashkahar/open-workbench-platform.git
-   ```
-
-4. **Install dependencies**:
+2. **Install dependencies:**
 
    ```bash
    go mod tidy
    ```
 
-5. **Build the project**:
+3. **Build the project:**
 
    ```bash
-   go build -o om main.go
+   go build -o bin/om main.go
    ```
 
-6. **Test your build**:
+4. **Test your build:**
    ```bash
-   ./om
+   ./bin/om --help
    ```
 
-### Development Workflow
+## Running Tests
 
-1. **Create a feature branch**:
-
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-
-2. **Make your changes** and test thoroughly
-
-3. **Commit your changes** with a clear message:
-
-   ```bash
-   git commit -m "feat: add new template for React applications"
-   ```
-
-4. **Push to your fork**:
-
-   ```bash
-   git push origin feature/amazing-feature
-   ```
-
-5. **Create a Pull Request** on GitHub
-
-## Project Structure
-
-```
-om/
-├── main.go                   # Main CLI application entry point
-├── tui.go                    # Terminal User Interface implementation
-├── go.mod                    # Go module dependencies
-├── go.sum                    # Go module checksums
-├── README.md                 # Project documentation
-├── CONTRIBUTING.md           # This file
-├── LICENSE                   # MIT License
-├── .goreleaser.yml          # Release automation configuration
-├── .github/workflows/        # GitHub Actions workflows
-│   └── release.yml          # Release workflow
-└── templates/                # Template directory
-    ├── nextjs-full-stack/    # Next.js template
-    └── fastapi-basic/        # FastAPI template
-```
-
-## Adding New Templates
-
-### Template Structure
-
-Each template should follow this structure:
-
-```
-templates/
-└── template-name/
-    ├── README.md             # Template documentation
-    ├── package.json          # Node.js dependencies (if applicable)
-    ├── Dockerfile            # Container configuration (if applicable)
-    ├── requirements.txt      # Python dependencies (if applicable)
-    └── src/                  # Source code directory
-        └── main.py           # Main application file
-```
-
-### Template Guidelines
-
-1. **Use Go Template Syntax**: Replace dynamic content with `{{.ProjectName}}` and `{{.Owner}}`
-2. **Include Documentation**: Add a comprehensive README.md for each template
-3. **Follow Best Practices**: Include modern tooling, linting, and testing setup
-4. **Test Thoroughly**: Ensure the template works end-to-end before submitting
-5. **Keep It Simple**: Start with essential features, add complexity gradually
-
-### Example Template README
-
-````markdown
-# {{.ProjectName}}
-
-Owned by: **{{.Owner}}**
-
-This [Framework] project was generated by Open Workbench CLI.
-
-## Features
-
-- Feature 1
-- Feature 2
-- Feature 3
-
-## Getting Started
-
-1. Install dependencies:
-   ```bash
-   [installation command]
-   ```
-````
-
-2. Run the development server:
-
-   ```bash
-   [run command]
-   ```
-
-3. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run test` - Run tests
-
-```
-
-### Updating the CLI
-
-When adding a new template, you'll need to update the CLI code:
-
-1. **Add template option** in the survey or TUI
-2. **Test the template** thoroughly
-3. **Update documentation** to include the new template
-
-## Code Style Guidelines
-
-### Go Code Style
-
-- Follow [Effective Go](https://golang.org/doc/effective_go.html) guidelines
-- Use `gofmt` to format code
-- Add comments for exported functions and complex logic
-- Handle errors explicitly
-- Use meaningful variable and function names
-
-### Template Code Style
-
-- Use consistent indentation (2 spaces for JSON/YAML, 4 for Python)
-- Follow framework-specific conventions
-- Include proper error handling
-- Add appropriate comments for complex logic
-
-### Commit Message Format
-
-Use conventional commit format:
-
-```
-
-type(scope): description
-
-[optional body]
-
-[optional footer]
-
-````
-
-Types:
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, etc.)
-- `refactor`: Code refactoring
-- `test`: Adding or updating tests
-- `chore`: Maintenance tasks
-
-Examples:
-- `feat: add React template`
-- `fix: resolve template variable substitution issue`
-- `docs: update installation instructions`
-
-## Testing
-
-### Manual Testing
-
-1. **Build the CLI**:
-   ```bash
-   go build -o om main.go
-````
-
-2. **Test each template**:
-
-   ```bash
-   ./om
-   # Follow prompts and verify the generated project
-   ```
-
-   ```bash
-
-   ```
-
-3. **Test generated projects**:
-   - Install dependencies
-   - Run development server
-   - Verify functionality
-
-### Automated Testing
-
-Run the test suite:
+### All Tests
 
 ```bash
 go test ./...
 ```
 
-## Submitting Changes
+### Tests with Coverage
+
+```bash
+go test -cover ./...
+```
+
+### Specific Package Tests
+
+```bash
+go test ./cmd/...
+go test ./internal/templating/...
+go test ./internal/manifest/...
+```
+
+### Integration Tests
+
+```bash
+go test -v ./cmd/init_test.go
+go test -v ./cmd/security_test.go
+```
+
+## Code Style Guidelines
+
+### Go Code Style
+
+- Follow the [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
+- Use `gofmt` for code formatting
+- Keep functions focused and concise
+- Add comments for exported functions and types
+
+### File Organization
+
+- **Commands**: Place in `cmd/` directory
+- **Internal Logic**: Place in `internal/` directory
+- **Templates**: Place in `templates/` directory
+- **Documentation**: Place in `docs/` directory
+
+### Naming Conventions
+
+- **Functions**: Use camelCase for function names
+- **Variables**: Use camelCase for variable names
+- **Constants**: Use UPPER_SNAKE_CASE for constants
+- **Types**: Use PascalCase for type names
+
+## Pull Request Process
+
+### Before Submitting
+
+1. **Ensure tests pass:**
+
+   ```bash
+   go test ./...
+   ```
+
+2. **Format your code:**
+
+   ```bash
+   go fmt ./...
+   ```
+
+3. **Check for linting issues:**
+
+   ```bash
+   golangci-lint run
+   ```
+
+4. **Update documentation** if your changes affect user-facing functionality
+
+### Creating a Pull Request
+
+1. **Fork the repository** on GitHub
+2. **Create a feature branch:**
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+3. **Make your changes** following the code style guidelines
+4. **Commit your changes:**
+   ```bash
+   git commit -m "Add feature: brief description"
+   ```
+5. **Push to your fork:**
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+6. **Create a pull request** with a clear description
 
 ### Pull Request Guidelines
 
-1. **Create a descriptive title** that summarizes the change
-2. **Provide a detailed description** of what was changed and why
-3. **Include screenshots** for UI changes
-4. **Test your changes** thoroughly before submitting
-5. **Update documentation** if needed
-6. **Follow the commit message format** (see above)
+- **Title**: Clear, descriptive title
+- **Description**: Explain what the PR does and why
+- **Testing**: Describe how you tested the changes
+- **Breaking Changes**: Note any breaking changes
+- **Documentation**: Update relevant documentation
 
-### Pull Request Template
+## Areas for Contribution
 
-```markdown
-## Description
+### High Priority
 
-Brief description of the changes
+- **Bug fixes** in existing functionality
+- **Documentation improvements** for unclear sections
+- **Test coverage** for untested code
+- **Performance improvements** for slow operations
 
-## Type of Change
+### Medium Priority
 
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Documentation update
-- [ ] Template addition/update
-- [ ] Other (please describe)
+- **New templates** for popular frameworks
+- **Additional deployment targets** (Kubernetes, etc.)
+- **Enhanced parameter types** (file upload, etc.)
+- **Better error messages** and user feedback
 
-## Testing
+### Low Priority
 
-- [ ] Manual testing completed
-- [ ] Generated project works correctly
-- [ ] Documentation updated
+- **UI improvements** for interactive prompts
+- **Additional validation rules** for parameters
+- **More template examples** and documentation
+- **CI/CD improvements** and automation
 
-## Checklist
+## Template Contributions
 
-- [ ] Code follows style guidelines
-- [ ] Self-review completed
-- [ ] Documentation updated
-- [ ] No breaking changes
-```
+### Creating New Templates
 
-## Release Process
+1. **Study existing templates** in the `templates/` directory
+2. **Follow the template structure** guidelines in [CREATING_A_TEMPLATE.md](docs/CREATING_A_TEMPLATE.md)
+3. **Test your template** thoroughly before submitting
+4. **Include comprehensive documentation** with your template
 
-### For Maintainers
+### Template Review Criteria
 
-1. **Create a new release**:
+- **Functionality**: Does the template work correctly?
+- **Documentation**: Is the template well-documented?
+- **Best Practices**: Does it follow established patterns?
+- **Security**: Are there any security concerns?
 
-   ```bash
-   git tag v0.5.0
-   git push origin v0.5.0
-   ```
+## Reporting Issues
 
-2. **GitHub Actions** will automatically:
+### Bug Reports
 
-   - Build binaries for all platforms
-   - Create a GitHub release
-   - Update Homebrew and Scoop packages
-   - Generate changelog
+When reporting bugs, please include:
 
-3. **Verify the release**:
-   - Check GitHub Releases page
-   - Test Homebrew installation
-   - Test Scoop installation
+- **Clear description** of the problem
+- **Steps to reproduce** the issue
+- **Expected behavior** vs actual behavior
+- **Environment details** (OS, Go version, etc.)
+- **Error messages** and stack traces
 
-### Release Checklist
+### Feature Requests
 
-- [ ] All tests pass
-- [ ] Documentation is up to date
-- [ ] Changelog is accurate
-- [ ] Version number is correct
-- [ ] Release notes are comprehensive
+When requesting features, please include:
+
+- **Clear description** of the feature
+- **Use case** and motivation
+- **Proposed implementation** if you have ideas
+- **Impact** on existing functionality
 
 ## Getting Help
 
-- **Issues**: Use GitHub Issues for bug reports and feature requests
-- **Discussions**: Use GitHub Discussions for questions and ideas
-- **Documentation**: Check the README and code comments
+### Before Asking
 
-## Recognition
+1. **Check existing issues** for similar problems
+2. **Read the documentation** in the `docs/` directory
+3. **Try the latest version** from the main branch
+4. **Search the codebase** for relevant code
 
-Contributors will be recognized in:
+### Asking Questions
 
-- GitHub contributors list
-- Release notes
-- Project documentation
+- **Be specific** about your problem
+- **Include relevant code** and error messages
+- **Describe what you've tried** already
+- **Use clear, concise language**
 
-Thank you for contributing to Open Workbench CLI! 🚀
+## Code of Conduct
+
+### Our Standards
+
+- **Be respectful** of others
+- **Be collaborative** and helpful
+- **Be constructive** in feedback
+- **Be inclusive** of diverse perspectives
+
+### Enforcement
+
+- **Report violations** to project maintainers
+- **Investigation** of reported violations
+- **Appropriate action** for confirmed violations
+
+## Release Process
+
+### Versioning
+
+We follow [Semantic Versioning](https://semver.org/):
+
+- **Major**: Breaking changes
+- **Minor**: New features (backward compatible)
+- **Patch**: Bug fixes (backward compatible)
+
+### Release Steps
+
+1. **Update version** in relevant files
+2. **Update changelog** with new features/fixes
+3. **Run full test suite** to ensure stability
+4. **Create release** on GitHub with release notes
+5. **Update documentation** if needed
+
+## Acknowledgments
+
+Thank you to all contributors who have helped make Open Workbench Platform better!
+
+---
+
+**Questions?** Open an issue or reach out to the maintainers.

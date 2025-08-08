@@ -103,6 +103,16 @@
         "command": "npm install",
         "description": "Installing project dependencies...",
         "condition": "InstallDeps == true"
+      },
+      {
+        "command": "copy env.example .env 2>nul || cp env.example .env 2>/dev/null || echo 'env.example not found, skipping .env creation'",
+        "description": "Creating environment file...",
+        "condition": "true"
+      },
+      {
+        "command": "echo 'Database setup instructions:' && echo 'PostgreSQL: Create database and update .env file' && echo 'MongoDB: Start MongoDB service and update .env file' && echo 'SQLite: Database file will be created automatically'",
+        "description": "Displaying database setup instructions...",
+        "condition": "DatabaseType != 'None'"
       }
     ]
   }

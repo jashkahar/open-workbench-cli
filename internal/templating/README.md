@@ -519,6 +519,6 @@ fmt.Printf("DEBUG: Successfully parsed manifest: %s - %s\n", manifest.Name, mani
 
 ---
 
-**Last Updated**: 07/29/2025  
+**Last Updated**: August 3, 2025  
 **Version**: v0.5.0  
 **Maintainers**: [Project Maintainers]

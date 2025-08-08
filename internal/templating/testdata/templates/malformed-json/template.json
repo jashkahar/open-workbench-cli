@@ -1,0 +1,19 @@
+{
+  "name": "malformed-template",
+  "description": "A malformed test template",
+  "parameters": [
+    {
+      "name": "project_name",
+      "prompt": "What is your project name?",
+      "type": "string",
+      "required": true
+    }
+  ],
+  "postScaffold": {
+    "commands": [
+      {
+        "command": "npm install",
+        "description": "Install dependencies"
+      }
+    ]
+  }
