@@ -55,7 +55,7 @@ The `template.json` file defines the template's behavior and parameters.
       "name": "ParameterName",
       "prompt": "User prompt text",
       "group": "Parameter Group",
-      "type": "string|boolean|select|multi-select",
+      "type": "string|boolean|select|multiselect",
       "required": true,
       "default": "default_value",
       "validation": {
@@ -126,13 +126,13 @@ The `template.json` file defines the template's behavior and parameters.
 }
 ```
 
-#### Multi-Select Parameters
+#### Multiselect Parameters
 
 ```json
 {
   "name": "Features",
   "prompt": "Select features:",
-  "type": "multi-select",
+  "type": "multiselect",
   "options": ["Authentication", "Database", "API", "Testing"]
 }
 ```
@@ -253,8 +253,8 @@ Files can be conditionally included by using empty names:
 The `workbench.yaml` file is automatically generated and updated by the system:
 
 ```yaml
-apiVersion: v1
-kind: Workbench
+apiVersion: openworkbench.io/v1alpha1
+kind: Project
 metadata:
   name: project-name
 environments:
@@ -264,13 +264,13 @@ environments:
 services:
   frontend:
     template: nextjs-full-stack
-    path: frontend
+    path: ./frontend
     port: 3000
     environment:
       NODE_ENV: development
   backend:
     template: fastapi-basic
-    path: backend
+    path: ./backend
     port: 8000
     resources:
       database:
@@ -279,7 +279,7 @@ services:
 components:
   gateway:
     template: nginx-gateway
-    path: gateway
+    path: ./gateway
     ports: ["80", "443"]
 ```
 

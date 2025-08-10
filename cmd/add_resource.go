@@ -42,9 +42,7 @@ Available resource types:
   • mongodb - MongoDB Database
   • redis-cache - Redis Cache
   • memcached - Memcached Cache
-  • s3-bucket - AWS S3 Bucket (MinIO for local)
-  • rabbitmq - RabbitMQ Message Queue
-  • kafka - Apache Kafka Message Queue`,
+  • rabbitmq - RabbitMQ Message Queue`,
 	RunE: runAddResource,
 }
 
@@ -99,8 +97,8 @@ func runAddResource(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save workbench.yaml: %w", err)
 	}
 
-	// Print success message
-	printAddResourceSuccessMessage(serviceName, resourceName, resourceType, blueprint)
+	// Print success message with next steps and actionable guidance
+	printAddResourceSuccessMessage(serviceName, resourceName, resourceType, blueprint, resourceConfig)
 
 	return nil
 }
@@ -327,7 +325,7 @@ func saveWorkbenchManifest(manifest *manifestPkg.WorkbenchManifest, projectRoot 
 	return nil
 }
 
-func printAddResourceSuccessMessage(serviceName, resourceName, resourceType string, blueprint resources.ResourceBlueprint) {
+func printAddResourceSuccessMessage(serviceName, resourceName, resourceType string, blueprint resources.ResourceBlueprint, cfg map[string]string) {
 	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("✅ Successfully added resource to your project!")
 	fmt.Println(strings.Repeat("=", 60))
@@ -342,9 +340,34 @@ func printAddResourceSuccessMessage(serviceName, resourceName, resourceType stri
 	fmt.Println("  • workbench.yaml - Added resource configuration")
 
 	fmt.Println("\n🚀 Next steps:")
-	fmt.Println("  1. Run 'om compose --target docker' to generate Docker Compose configuration")
-	fmt.Println("  2. Run 'om compose --target terraform' to generate Terraform configuration")
-	fmt.Println("  3. The resource will be automatically configured for both targets")
+	fmt.Println("  1) Run: om compose --target docker")
+	fmt.Println("  2) Start: docker compose up --build")
+	fmt.Println("  3) Add optional init/config files if needed (see below)")
+
+	// Actionable guidance (concise)
+	fmt.Println("\n🧭 Guidance:")
+	if v := cfg["port"]; v != "" {
+		fmt.Printf("  - Port: %s (host port maps to container)\n", v)
+	}
+	if v := cfg["databaseName"]; v != "" {
+		fmt.Printf("  - Database: %s\n", v)
+	}
+	if u := cfg["username"]; u != "" {
+		fmt.Printf("  - Username: %s\n", u)
+	}
+	switch strings.ToLower(resourceType) {
+	case "postgres", "postgres-db":
+		fmt.Println("  - Example connection: postgres://<user>:<password>@localhost:<port>/<db>?sslmode=disable")
+		fmt.Println("  - Mount init SQL: ./<service>/init:/docker-entrypoint-initdb.d (optional)")
+	case "mysql", "mysql-db":
+		fmt.Println("  - Example connection: mysql://<user>:<password>@localhost:<port>/<db>")
+		fmt.Println("  - Mount init SQL: ./<service>/init:/docker-entrypoint-initdb.d (optional)")
+	case "mongodb", "mongo":
+		fmt.Println("  - Example connection: mongodb://<user>:<password>@localhost:<port>/<db>")
+	case "redis", "redis-cache":
+		fmt.Println("  - Example connection: redis://:<password>@localhost:<port>")
+	}
+	fmt.Println("  - Volume name: <service>_<resource>_data (defined in docker-compose.yml)")
 
 	fmt.Println("\n💡 Tips:")
 	fmt.Println("  • Resources are automatically networked with their services")
