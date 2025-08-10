@@ -82,7 +82,7 @@ The templating engine is the core of the system, providing dynamic template proc
 - Provides progress reporting
 
 **Parameter System** (`parameters.go`):
-- Defines parameter types (string, boolean, select, multi-select)
+- Defines parameter types (string, boolean, select, multiselect)
 - Handles parameter validation and grouping
 - Manages interactive prompting
 
@@ -144,10 +144,7 @@ The generator system creates deployment configurations from the manifest.
 - Supports volume mounts
 
 #### Terraform Generator (`generator/terraform/`)
-- Generates Terraform configurations
-- Supports multiple cloud providers
-- Handles environment-specific configurations
-- Manages infrastructure as code
+- (Temporarily disabled) Future support for generating Terraform configurations
 
 ### Security Layer (`cmd/security.go`)
 
@@ -210,15 +207,19 @@ Generate deployment configuration.
 List project services and components.
 
 **Flags:**
-- None
+- `--detailed`: Show detailed information including paths, ports, env vars, and resource configs
 
 ### `om delete`
 
-Remove services or components.
+Remove services, components, or resources.
 
-**Flags:**
-- `--name`: Name of service/component to delete
-- `--type`: Type (service or component)
+Subcommands and flags:
+- `om delete service [name]` — remove a service from `workbench.yaml`
+  - Flags: `--files` (also delete the service directory and files)
+- `om delete component [name]` — remove a component from `workbench.yaml`
+  - Flags: `--files` (also delete the component directory and files)
+- `om delete resource service.resource` — remove a resource from a service
+  - Example: `om delete resource backend.database`
 
 ## Security Architecture
 

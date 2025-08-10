@@ -86,9 +86,14 @@
         "condition": "IncludeVirtualEnv == true"
       },
       {
+        "command": "python -c \"import platform,subprocess; py='venv\\\\Scripts\\\\python.exe' if platform.system()=='Windows' else 'venv/bin/python'; subprocess.check_call([py,'-m','pip','install','-r','requirements.txt'])\"",
+        "description": "Installing Python dependencies into the created virtual environment...",
+        "condition": "InstallDeps == true && IncludeVirtualEnv == true"
+      },
+      {
         "command": "pip install -r requirements.txt",
-        "description": "Installing Python dependencies...",
-        "condition": "InstallDeps == true"
+        "description": "Installing Python dependencies (no virtual environment)...",
+        "condition": "InstallDeps == true && IncludeVirtualEnv == false"
       }
     ]
   }

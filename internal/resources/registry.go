@@ -235,36 +235,6 @@ func (r *Registry) registerDefaultBlueprints() {
 		},
 	}
 
-	// Storage resources
-	r.blueprints["s3-bucket"] = ResourceBlueprint{
-		Name:        "s3-bucket",
-		Description: "An AWS S3 Bucket",
-		Category:    "storage",
-		DockerComposeSnippet: `
-    image: minio/minio:{{.Version}}
-    command: server /data --console-address ":9001"
-    environment:
-      - MINIO_ROOT_USER={{.AccessKey}}
-      - MINIO_ROOT_PASSWORD={{.SecretKey}}
-    volumes:
-      - minio_data:/data
-    ports:
-      - "{{.Port}}:9000"
-      - "9001:9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 5`,
-		TerraformModule: "modules/aws/s3",
-		Parameters: []ResourceParameter{
-			{Name: "version", Description: "MinIO version", Type: "select", Required: true, Default: "latest", Options: []string{"latest", "RELEASE.2023-10-07T15-07-38Z"}},
-			{Name: "accessKey", Description: "Access key", Type: "string", Required: true, Default: "minioadmin"},
-			{Name: "secretKey", Description: "Secret key", Type: "string", Required: true},
-			{Name: "port", Description: "MinIO port", Type: "number", Required: false, Default: 9000},
-		},
-	}
-
 	// Message queue resources
 	r.blueprints["rabbitmq"] = ResourceBlueprint{
 		Name:        "rabbitmq",
@@ -291,47 +261,6 @@ func (r *Registry) registerDefaultBlueprints() {
 			{Name: "username", Description: "RabbitMQ username", Type: "string", Required: true, Default: "admin"},
 			{Name: "password", Description: "RabbitMQ password", Type: "string", Required: true},
 			{Name: "port", Description: "RabbitMQ port", Type: "number", Required: false, Default: 5672},
-		},
-	}
-
-	r.blueprints["kafka"] = ResourceBlueprint{
-		Name:        "kafka",
-		Description: "An Apache Kafka Message Queue",
-		Category:    "message-queue",
-		DockerComposeSnippet: `
-    image: confluentinc/cp-kafka:{{.Version}}
-    environment:
-      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://:29092
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
-      KAFKA_CFG_PROCESS_ROLES: broker
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:29093,PLAINTEXT_HOST://:29092
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
-      KAFKA_CFG_PROCESS_ROLES: broker
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:29093,PLAINTEXT_HOST://:29092
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
-      KAFKA_CFG_PROCESS_ROLES: broker
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-    ports:
-      - "{{.Port}}:9092"
-      - "29092:29092"
-    depends_on:
-      - zookeeper`,
-		TerraformModule: "modules/aws/msk",
-		Parameters: []ResourceParameter{
-			{Name: "version", Description: "Kafka version", Type: "select", Required: true, Default: "7.4.0", Options: []string{"7.4.0", "7.3.0"}},
-			{Name: "port", Description: "Kafka port", Type: "number", Required: false, Default: 9092},
 		},
 	}
 }

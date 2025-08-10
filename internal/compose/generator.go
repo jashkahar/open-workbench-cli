@@ -27,7 +27,6 @@ func NewGenerator(project *WorkbenchProject) *Generator {
 // Generate creates the docker-compose.yml configuration
 func (g *Generator) Generate() (*DockerComposeConfig, error) {
 	config := &DockerComposeConfig{
-		Version:  "3.8",
 		Services: make(map[string]DockerComposeService),
 		Volumes:  make(map[string]interface{}),
 		Networks: map[string]interface{}{
@@ -116,22 +115,22 @@ func (g *Generator) createResourceService(serviceName, resourceName string, reso
 	}
 
 	// Try to apply a resource blueprint if available
-	if applied := g.applyBlueprintIfAvailable(resource, &dockerService); applied {
-		// Ensure we have at least a volume if none was provided by blueprint for known types
-		g.ensureDefaultVolumeForKnownTypes(serviceName, resourceName, resource, &dockerService)
-		return dockerService
+	if applied := g.applyBlueprintIfAvailable(resource, &dockerService); !applied {
+		// Fallback: map known types to canonical images
+		baseImage := resolveBaseImage(resource.Type)
+		version := strings.TrimSpace(resource.Version)
+		if version == "" {
+			version = "latest"
+		}
+		dockerService.Image = fmt.Sprintf("%s:%s", baseImage, version)
 	}
 
-	// Fallback: map known types to canonical images and volumes
-	baseImage := resolveBaseImage(resource.Type)
-	version := strings.TrimSpace(resource.Version)
-	if version == "" {
-		version = "latest"
-	}
-	dockerService.Image = fmt.Sprintf("%s:%s", baseImage, version)
-
-	// Volume defaults for known types
+	// Ensure we have a volume mapping for known types if none was provided
 	g.ensureDefaultVolumeForKnownTypes(serviceName, resourceName, resource, &dockerService)
+
+	// Normalize any blueprint-provided volume names to the computed top-level volume name
+	g.rewriteResourceVolumeNames(serviceName, resourceName, &dockerService)
+
 	return dockerService
 }
 
@@ -194,6 +193,27 @@ func (g *Generator) resolveEnvironmentVariables(config *DockerComposeConfig) {
 	}
 }
 
+// rewriteResourceVolumeNames ensures service volume names match the top-level declared volume key
+func (g *Generator) rewriteResourceVolumeNames(serviceName, resourceName string, dockerService *DockerComposeService) {
+	if dockerService == nil || len(dockerService.Volumes) == 0 {
+		return
+	}
+	targetVolume := fmt.Sprintf("%s_%s_data", serviceName, resourceName)
+	normalized := make([]string, 0, len(dockerService.Volumes))
+	for _, vol := range dockerService.Volumes {
+		parts := strings.SplitN(vol, ":", 2)
+		if len(parts) == 2 {
+			left := strings.TrimSpace(parts[0])
+			// If left side looks like a named volume (not a host path), rewrite it
+			if !strings.Contains(left, "/") && !strings.HasPrefix(left, ".") && left != targetVolume {
+				vol = fmt.Sprintf("%s:%s", targetVolume, parts[1])
+			}
+		}
+		normalized = append(normalized, vol)
+	}
+	dockerService.Volumes = normalized
+}
+
 // resolveBaseImage maps a resource type to a canonical Docker image base
 func resolveBaseImage(resourceType string) string {
 	switch strings.ToLower(resourceType) {
@@ -205,12 +225,8 @@ func resolveBaseImage(resourceType string) string {
 		return "mongo"
 	case "redis", "redis-cache":
 		return "redis"
-	case "s3", "s3-bucket":
-		return "minio/minio"
 	case "rabbitmq":
 		return "rabbitmq"
-	case "kafka":
-		return "confluentinc/cp-kafka"
 	default:
 		return resourceType
 	}
@@ -245,12 +261,8 @@ func resolveBlueprintKey(resourceType string) string {
 		return "redis-cache"
 	case "memcached":
 		return "memcached"
-	case "s3", "s3-bucket":
-		return "s3-bucket"
 	case "rabbitmq":
 		return "rabbitmq"
-	case "kafka":
-		return "kafka"
 	default:
 		return resourceType
 	}

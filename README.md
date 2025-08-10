@@ -29,6 +29,30 @@ Open Workbench solves the "blank canvas" problem by automating the tedious setup
 
 **In short:** Open Workbench is the fastest way to go from zero to a running, production-grade app—locally or in the cloud.
 
+## Try it in 60 seconds
+```
+# macOS / Linux
+brew install jashkahar/tap/open-workbench-platform
+
+# Windows (PowerShell)
+scoop bucket add jashkahar https://github.com/jashkahar/scoop-bucket.git
+scoop install open-workbench-platform
+
+# If that does not work
+go install github.com/jashkahar/open-workbench-platform@latest
+
+# Quickstart (interactive)
+om init
+om add service --template fastapi-basic
+om compose --target docker
+
+# requires docker desktop installed
+docker compose up --build
+
+# Then open your browser (example)
+# http://localhost:8000
+```
+
 ## 🚀 Quick Start
 
 ### Installation

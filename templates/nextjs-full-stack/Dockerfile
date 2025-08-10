@@ -12,5 +12,7 @@ WORKDIR /app
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
-EXPOSE 3000
-CMD ["npm", "start"] 
+ENV NODE_ENV=development \
+    PORT=3002
+EXPOSE 3002
+CMD ["sh", "-lc", "PORT=$PORT npm start"]
