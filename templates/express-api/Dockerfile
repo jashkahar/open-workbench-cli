@@ -1,23 +1,29 @@
-# Use Node.js 18 Alpine as base image
-FROM node:18-alpine
+###### Local/dev-friendly multi-stage build to ensure TypeScript compilation and native deps reliability
 
-# Set working directory
+# Stage 1: build with devDependencies
+FROM node:18-bullseye-slim AS builder
 WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy application code
+RUN sh -lc 'if [ -f package-lock.json ]; then npm ci; else npm install; fi'
 COPY . .
+RUN npm run build
 
-# Build the application (if there's a build script)
-RUN npm run build || true
+# Stage 2: production runtime with only prod deps
+FROM node:18-bullseye-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=development \
+    # Defaults for local Docker Desktop to reach host DBs
+    DB_HOST=host.docker.internal \
+    MONGO_URI=mongodb://host.docker.internal:27017/express_api \
+    PORT=3001
 
-# Expose port
-EXPOSE 3000
+COPY package*.json ./
+RUN sh -lc 'if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi'
 
-# Start the application
-CMD ["npm", "start"] 
+# Copy compiled app
+COPY --from=builder /app/dist ./dist
+
+# Expose API port (unique for local/dev)
+EXPOSE 3001
+
+CMD ["node", "dist/index.js"]

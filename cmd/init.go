@@ -534,6 +534,7 @@ func createWorkbenchManifest(projectName, serviceName, templateName string) erro
 			serviceName: {
 				Template: templateName,
 				Path:     filepath.Join(".", serviceName),
+				Port:     defaultServicePort(templateName),
 			},
 		},
 	}

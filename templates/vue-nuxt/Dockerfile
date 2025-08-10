@@ -1,23 +1,16 @@
 # Use Node.js 18 Alpine as base image
 FROM node:18-alpine
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
+RUN sh -lc 'if [ -f package-lock.json ]; then npm ci; else npm install; fi'
 
-# Install dependencies
-RUN npm ci
-
-# Copy application code
 COPY . .
 
-# Build the application
 RUN npm run build
 
-# Expose port
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "start"] 
+# Local/dev-friendly Nuxt 3 preview server
+CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "3000"]

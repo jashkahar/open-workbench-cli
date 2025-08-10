@@ -57,16 +57,16 @@ Interactive Mode (no parameters):
   om add component
 
 Direct Mode (with parameters):
-  om add component --name gateway --template fastapi-basic
+  om add component --name gateway --template nginx-gateway
 
 Examples:
   # Interactive mode - prompts for all details
   om add component
 
   # Direct mode with all parameters
-  om add component --name gateway --template fastapi-basic
+  om add component --name gateway --template nginx-gateway
 
-Available templates: react-typescript, nextjs-full-stack, fastapi-basic, express-api, vue-nuxt`,
+Available templates: react-typescript, nextjs-full-stack, fastapi-basic, express-api, vue-nuxt, nginx-gateway, redis-cache`,
 	RunE: runAddComponent,
 }
 
@@ -608,6 +608,7 @@ func updateWorkbenchManifest(manifest *manifestPkg.WorkbenchManifest, serviceNam
 	manifest.Services[serviceName] = manifestPkg.Service{
 		Template: templateName,
 		Path:     filepath.Join(".", serviceName),
+		Port:     defaultServicePort(templateName),
 	}
 
 	// Marshal to YAML
@@ -624,6 +625,24 @@ func updateWorkbenchManifest(manifest *manifestPkg.WorkbenchManifest, serviceNam
 	}
 
 	return nil
+}
+
+// defaultServicePort returns a sensible external/internal port for well-known templates
+func defaultServicePort(templateName string) int {
+	switch strings.ToLower(templateName) {
+	case "express-api":
+		return 3001
+	case "react-typescript":
+		return 4173
+	case "nextjs-full-stack":
+		return 3002
+	case "fastapi-basic":
+		return 8000
+	case "vue-nuxt":
+		return 3000
+	default:
+		return 0
+	}
 }
 
 // printAddServiceSuccessMessage prints a success message for adding a service
@@ -985,7 +1004,10 @@ func printAddComponentSuccessMessage(componentName, templateName string) {
 	fmt.Println()
 	fmt.Println("🚀 Next steps:")
 	fmt.Printf("  cd %s\n", componentName)
-	fmt.Println("  om add service  # Add services to your project")
+	fmt.Println("  om add service   # Add services to your project")
 	fmt.Println("  om add component # Add more components to your project")
-	fmt.Println("  om compose      # Generate Docker Compose configuration")
+	fmt.Println("  om compose       # Generate Docker Compose configuration")
+	fmt.Println()
+	fmt.Println("ℹ️ Edit your component config:")
+	fmt.Printf("  - Path: ./%s (e.g., update nginx config, set ports in workbench.yaml)\n", componentName)
 }

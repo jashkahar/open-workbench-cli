@@ -57,7 +57,7 @@ type BuildConfig struct {
 
 // DockerComposeConfig represents the complete docker-compose.yml structure
 type DockerComposeConfig struct {
-	Version  string                          `yaml:"version"`
+	Version  string                          `yaml:"version,omitempty"`
 	Services map[string]DockerComposeService `yaml:"services"`
 	Volumes  map[string]interface{}          `yaml:"volumes,omitempty"`
 	Networks map[string]interface{}          `yaml:"networks,omitempty"`

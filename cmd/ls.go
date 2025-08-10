@@ -214,5 +214,4 @@ func printSummary(manifest *manifestPkg.WorkbenchManifest) {
 	fmt.Println()
 	fmt.Println("💡 Use 'om ls --detailed' for more information")
 	fmt.Println("💡 Use 'om compose --target docker' to generate local configuration")
-	fmt.Println("💡 Use 'om compose --target terraform' to generate cloud configuration")
 }
